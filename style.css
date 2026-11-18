@@ -1,0 +1,59 @@
+:root { --low: #2fc4b2; --high: #ff6b57; --hist: #8a96a3; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font: 17px/1.55 Georgia, "Times New Roman", serif; color: #14212b; overflow-x: hidden; }
+h1, h2, .zonetag, .controls, .src, .byline, #depth, #tip, .legend { font-family: "Helvetica Neue", Arial, sans-serif; }
+#bg { position: fixed; inset: 0; z-index: -5; background: #8ccbf2; }
+
+/* background layers */
+#clouds { position: fixed; inset: 0; z-index: -4; pointer-events: none; }
+#clouds span { position: absolute; width: 420px; height: 120px; border-radius: 120px; background: radial-gradient(closest-side, rgba(255,255,255,.9), rgba(255,255,255,0)); filter: blur(6px); animation: drift 70s linear infinite; }
+#clouds span:nth-child(1) { top: 10%; left: -20%; animation-duration: 90s; }
+#clouds span:nth-child(2) { top: 28%; left: -40%; width: 560px; animation-duration: 120s; animation-delay: -40s; }
+#clouds span:nth-child(3) { top: 60%; left: -30%; animation-duration: 100s; animation-delay: -70s; }
+#clouds span:nth-child(4) { top: 78%; left: -25%; width: 300px; animation-duration: 80s; animation-delay: -20s; }
+@keyframes drift { to { transform: translateX(170vw); } }
+#rays { position: fixed; inset: 0; z-index: -4; pointer-events: none; opacity: 0;
+  background: repeating-linear-gradient(100deg, rgba(255,255,255,.06) 0 40px, rgba(255,255,255,0) 40px 140px);
+  mask-image: linear-gradient(to bottom, #000, transparent 75%); -webkit-mask-image: linear-gradient(to bottom, #000, transparent 75%); }
+#bubbles { position: fixed; inset: 0; z-index: -3; pointer-events: none; opacity: 0; }
+
+/* depth readout */
+#depth { position: fixed; left: 20px; top: 50%; transform: translateY(-50%); z-index: 5; font-size: 13px; white-space: nowrap; }
+#depth .dl { opacity: .7; }
+#depth .bar { margin: 8px 0 0 4px; width: 1px; height: 180px; background: currentColor; opacity: .4; position: relative; }
+#depthDot { position: absolute; left: -4px; width: 9px; height: 9px; background: currentColor; top: 0; }
+
+main { max-width: 980px; margin: 0 auto; padding: 0 24px 0 120px; }
+section { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; padding: 12vh 0; }
+.hero h1 { font-size: clamp(44px, 7vw, 80px); line-height: 1.05; margin: 0 0 14px; font-weight: 700; color: #0d2a40; }
+.lede { font-size: 22px; max-width: 600px; margin: 0 0 24px; }
+.byline { font-size: 14px; opacity: .75; margin: 0; }
+.zonetag { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; opacity: .65; margin-bottom: 4px; }
+h2 { font-size: 30px; margin: 0 0 8px; line-height: 1.2; }
+section p { max-width: 700px; margin: 0 0 14px; }
+.deepz { color: #e8f2f9; }
+.src { font-size: 12px; opacity: .65; margin-top: 10px; }
+.stub { opacity: .6; font-style: italic; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 4px 0 14px; font-size: 14px; }
+.seg { display: inline-flex; }
+.seg button, .playbtn { font: 13px "Helvetica Neue", Arial, sans-serif; border: 1px solid currentColor; background: transparent; color: inherit; padding: 4px 10px; cursor: pointer; opacity: .75; }
+.seg button + button { border-left: 0; }
+.seg button:first-child { border-radius: 3px 0 0 3px; } .seg button:last-child { border-radius: 0 3px 3px 0; }
+.seg button.on { background: #14212b; color: #fff; border-color: #14212b; opacity: 1; }
+.deepz .seg button.on { background: #e8f2f9; color: #0a2a44; border-color: #e8f2f9; }
+.playbtn { border-radius: 3px; opacity: 1; min-width: 56px; }
+.slider { display: inline-flex; align-items: center; gap: 8px; }
+.slider b { font-variant-numeric: tabular-nums; min-width: 92px; font-weight: 600; }
+.slider.wide input { width: 260px; }
+
+.map { position: relative; width: 100%; cursor: grab; }
+.map:active { cursor: grabbing; }
+.map canvas { display: block; }
+.legend svg { fill: currentColor; } .legend svg text { font-size: 11px; }
+.chart svg { fill: currentColor; font-family: "Helvetica Neue", Arial, sans-serif; }
+.chart .axis path, .chart .axis line { stroke: currentColor; opacity: .35; }
+.chart .axis text { font-size: 11px; opacity: .8; }
+.chart .grid line { stroke: currentColor; opacity: .1; }
+#tip { position: fixed; z-index: 20; pointer-events: none; opacity: 0; background: #111; color: #fff; padding: 5px 8px; border-radius: 3px; font-size: 13px; line-height: 1.4; max-width: 260px; }

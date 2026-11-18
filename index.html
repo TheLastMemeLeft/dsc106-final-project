@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Human Consequence</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:,">
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+</head>
+<body>
+<div id="bg"></div>
+<div id="clouds"><span></span><span></span><span></span><span></span></div>
+<div id="rays"></div>
+<canvas id="bubbles"></canvas>
+<div id="depth"><span class="dl">altitude</span> <span id="depthVal">3,000 m</span><div class="bar"><div id="depthDot"></div></div></div>
+
+<main>
+  <!-- SKY -->
+  <section class="hero" data-bg="#8ccbf2" data-alt="3000">
+    <h1>Human Consequence</h1>
+    <p class="lede">Scroll down to fall from the clouds, across the land and into the ocean.</p>
+    <p class="byline">Amy Trinh, Minh Pham, Aryan Agarwal · DSC 106 Final Project</p>
+  </section>
+
+  <section class="zone" data-bg="#b9e0f8" data-alt="2000">
+    <div class="zonetag">Sky</div>
+    <h2>Where the rain is heading</h2>
+    <p>Change in rainfall compared to 1995-2014, averaged over 8 climate models. Use the slider to move through time and switch between low and high emissions. Click the map, then scroll to zoom.</p>
+    <div class="controls">
+      <span class="seg" id="rainScen"><button data-s="s126">Low emissions</button><button data-s="s585" class="on">High emissions</button></span>
+      <label class="slider">Years <input type="range" id="rainYear" min="0" max="29" value="29"> <b id="rainYearLbl"></b></label>
+    </div>
+    <div id="rainMap" class="map"></div>
+    <div class="legend" id="rainLegend"></div>
+    <p class="src">Data: CMIP6 precipitation, 8 models, 5-year averages, 4° grid. Grey areas are deserts (under 0.25 mm of rain a day), where a % change isn't meaningful.</p>
+  </section>
+
+  <!-- LAND -->
+  <section class="zone" data-bg="#e6dcc0" data-alt="400">
+    <div class="zonetag">Land</div>
+    <h2>What we put into the air</h2>
+    <p>CO₂ in the atmosphere, driven by human emissions. Up to 2014 this is the historical run. After that it splits into a low and a high emissions scenario.</p>
+    <div id="co2Chart" class="chart"></div>
+    <p class="src">Data: GFDL-ESM4 co2mass, converted to ppm. Scenarios: SSP1-2.6 (low), SSP5-8.5 (high).</p>
+  </section>
+
+  <section class="zone" data-bg="#d9c99c" data-alt="60">
+    <h2>More CO₂, warmer oceans</h2>
+    <p>Each dot is one year, plotted by CO₂ level and average sea surface temperature. Hover over a dot to see the year.</p>
+    <div class="controls"><span class="seg multi" id="scatScen"><button data-s="historical" class="on">Historical</button><button data-s="ssp126" class="on">Low</button><button data-s="ssp585" class="on">High</button></span></div>
+    <div id="scatChart" class="chart"></div>
+    <p class="src">Data: GFDL-ESM4, global area-weighted mean sea surface temperature.</p>
+  </section>
+
+  <!-- SURFACE -->
+  <section class="zone deepz" data-bg="#2f9fd3" data-alt="0">
+    <div class="zonetag">Ocean surface</div>
+    <h2>Sea surface temperature, 1950-2100</h2>
+    <p>Press play or drag the slider. Switch to "Change" to see how much each area has warmed since 1950-1979.</p>
+    <div class="controls">
+      <button id="play" class="playbtn">Play</button>
+      <label class="slider wide">Year <input type="range" id="sstYear" min="1950" max="2100" value="2000"> <b id="sstYearLbl"></b></label>
+      <span class="seg" id="sstScen"><button data-s="ssp126">Low</button><button data-s="ssp585" class="on">High</button></span>
+      <span class="seg" id="sstMode"><button data-m="abs" class="on">Temperature</button><button data-m="anom">Change</button></span>
+    </div>
+    <div id="sstMap" class="map"></div>
+    <div class="legend" id="sstLegend"></div>
+    <p class="src">Data: GFDL-ESM4 tos (sea surface temperature), yearly mean, 2° grid. Years after 2014 are projections.</p>
+  </section>
+
+  <section class="zone deepz" data-bg="#147bb0" data-alt="-150">
+    <h2>How much of the ocean has warmed</h2>
+    <p>Share of ocean area by how much it has warmed since 1950-1979. This follows the year and scenario picked on the map above. The dashed line is 1980.</p>
+    <div id="histChart" class="chart"></div>
+  </section>
+
+  <!-- DEEP -->
+  <section class="zone deepz" data-bg="#0a3f6b" data-alt="-1500">
+    <div class="zonetag">Deep ocean</div>
+    <h2>Sea level rise from warming water</h2>
+    <p>Water expands as it warms, so sea level goes up even without melting ice. The shaded band is the range across models.</p>
+    <div id="slChart" class="chart"></div>
+    <p class="src">Data: CMIP6 zostoga (global thermosteric sea level), relative to 1995-2014.</p>
+  </section>
+
+  <section class="zone deepz writeup" data-bg="#03142a" data-alt="-4000">
+    <h2>Write-up</h2>
+    <p class="stub">[Write-up coming soon.]</p>
+  </section>
+</main>
+<div id="tip"></div>
+<script src="main.js"></script>
+</body>
+</html>
