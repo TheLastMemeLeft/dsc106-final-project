@@ -113,44 +113,15 @@ main { display: block; }
 .seg[hidden] { display: none; }
 .seg button, .playbtn, .maptools button { font: 600 14px var(--sans); color: var(--ink); background: transparent; border: 1px solid color-mix(in srgb, var(--ink) 55%, transparent); padding: 7px 13px; min-height: 36px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: scale var(--press) var(--ease-out), background-color .2s ease, color .2s ease; }
 .seg button + button { border-left: 0; }
-.seg button:first-child { border-radius: 4px 0 0 4px; }
-.seg button:last-child { border-radius: 0 4px 4px 0; }
-.seg button:active, .playbtn:active, .maptools button:active, .replay:active, .g-track button:active { scale: .97; }
-.seg button[aria-disabled="true"]:active { scale: 1; }
-@media (hover: hover) and (pointer: fine) {
-  .seg button:hover, .maptools button:hover, .replay:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); }
-  .playbtn:hover { background: color-mix(in srgb, var(--act) 82%, #ffffff); }
-  .g-track button:hover { color: var(--ink); }
-}
-.seg button.on { background: var(--act); color: var(--act-ink); border-color: var(--act); }
-.seg button[aria-disabled="true"] { cursor: not-allowed; text-decoration: line-through; text-decoration-thickness: 1px; background: transparent; color: var(--ink-2); border-color: color-mix(in srgb, var(--ink) 35%, transparent); }
-.seg button.on[aria-disabled="true"] { background: color-mix(in srgb, var(--ink) 16%, transparent); color: var(--ink); }
-/* multi-select: a filled swatch says "shown", so the row never reads as one solid bar */
-.seg.multi button.on { background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); border-color: color-mix(in srgb, var(--ink) 55%, transparent); }
-.seg.multi button:not(.on) { color: var(--ink-2); }
-.seg.multi button:not(.on) .sw { background: transparent; box-shadow: inset 0 0 0 1.5px currentColor; }
-.playbtn { border-radius: 4px; min-width: 76px; justify-content: center; background: var(--act); color: var(--act-ink); border-color: var(--act); }
-.replay { font: 600 13px var(--sans); color: var(--ink); background: transparent; border: 1px solid color-mix(in srgb, var(--ink) 40%, transparent); border-radius: 4px; padding: 4px 10px; min-height: 30px; cursor: pointer; transition: scale var(--press) var(--ease-out), background-color .2s ease; }
-.sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
-.sw.hist { background: var(--hist); } .sw.low { background: var(--low); } .sw.high { background: var(--high); }
-.slider { display: inline-flex; align-items: center; gap: 10px; font-weight: 500; }
-.slider input { accent-color: var(--act); width: 180px; }
-.slider.wide input { width: 240px; }
-.slider b { font-variant-numeric: tabular-nums; min-width: 4.6em; font-weight: 700; white-space: nowrap; }
-#rainYearLbl { flex: none; width: 6.2em; } /* fixed, so the track length never changes while dragging */
-.note { font-size: 13px; color: var(--ink-2); }
-.proj { font-size: 12px; font-weight: 600; color: var(--ink); display: inline-flex; align-items: center; gap: 6px; }
-.proj::before { content: ""; width: 14px; height: 14px; border: 1px solid currentColor; background: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 4px); }
-/* these toggle while a slider is being dragged: keep their space reserved so the slider never moves under the pointer */
-.proj[hidden] { display: inline-flex; visibility: hidden; }
-.note[hidden] { display: inline; visibility: hidden; }
-.pair { flex-basis: 100%; margin: 0 0 14px; font-size: 14px; line-height: 1.4; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.controls .pair { margin: 0; }
-.pair b { color: var(--ink); font-weight: 700; }
-.pair .lo { color: var(--low); } .pair .hi { color: var(--high); }
+.seg button:first-child { border-radius: 3px 0 0 3px; } .seg button:last-child { border-radius: 0 3px 3px 0; }
+.seg button.on { background: #14212b; color: #fff; border-color: #14212b; opacity: 1; }
+.deepz .seg button.on { background: #e8f2f9; color: #0a2a44; border-color: #e8f2f9; }
+.playbtn { border-radius: 3px; opacity: 1; min-width: 56px; }
+.slider { display: inline-flex; align-items: center; gap: 8px; }
+.slider b { font-variant-numeric: tabular-nums; min-width: 92px; font-weight: 600; }
+.slider.wide input { width: 260px; }
 
-/* ---------- maps & charts ---------- */
-.map { position: relative; cursor: grab; min-height: 120px; }
+.map { position: relative; width: 100%; cursor: grab; }
 .map:active { cursor: grabbing; }
 .map canvas { display: block; max-width: 100%; }
 .maptools { display: flex; gap: 6px; margin: 10px 0 0; }
