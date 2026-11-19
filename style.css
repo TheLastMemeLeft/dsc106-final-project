@@ -136,11 +136,14 @@ main { display: block; }
 .slider { display: inline-flex; align-items: center; gap: 10px; font-weight: 500; }
 .slider input { accent-color: var(--act); width: 180px; }
 .slider.wide input { width: 240px; }
-.slider b { font-variant-numeric: tabular-nums; min-width: 4.6em; font-weight: 700; }
+.slider b { font-variant-numeric: tabular-nums; min-width: 4.6em; font-weight: 700; white-space: nowrap; }
+#rainYearLbl { flex: none; width: 6.2em; } /* fixed, so the track length never changes while dragging */
 .note { font-size: 13px; color: var(--ink-2); }
 .proj { font-size: 12px; font-weight: 600; color: var(--ink); display: inline-flex; align-items: center; gap: 6px; }
 .proj::before { content: ""; width: 14px; height: 14px; border: 1px solid currentColor; background: repeating-linear-gradient(135deg, currentColor 0 1.5px, transparent 1.5px 4px); }
-.proj[hidden], .note[hidden] { display: none; }
+/* these toggle while a slider is being dragged: keep their space reserved so the slider never moves under the pointer */
+.proj[hidden] { display: inline-flex; visibility: hidden; }
+.note[hidden] { display: inline; visibility: hidden; }
 .pair { flex-basis: 100%; margin: 0 0 14px; font-size: 14px; line-height: 1.4; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .controls .pair { margin: 0; }
 .pair b { color: var(--ink); font-weight: 700; }

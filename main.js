@@ -68,7 +68,22 @@ const UI_MS = 250;
 // Lines are uncovered left to right at a constant pace (linear: every year gets the same time),
 // with a playhead showing the year and a dot riding each visible series. Labels arrive at the end.
 const REVEAL_MS = 6000;
-function revealer(svg, F, x, y, plot, labels, series, isOn) {
+const LINEAR_PACE = { duration: REVEAL_MS, yearAt: t => 1950 + 150 * t };
+// Split pace (CO2 and sea level): history slows as it nears the 2014 split, holds a beat, then the two futures
+// pull away with growing speed. Years per second follow the story, not the clock.
+const SPLIT_PACE = (() => {
+  const A = 3400, HOLD = 350, B = 2900, D = A + HOLD + B;
+  return {
+    duration: D,
+    yearAt: t => {
+      const ms = t * D;
+      if (ms < A) return 1950 + 64 * d3.easeSinOut(ms / A);
+      if (ms < A + HOLD) return 2014;
+      return 2014 + 86 * d3.easeQuadIn((ms - A - HOLD) / B);
+    }
+  };
+})();
+function revealer(svg, F, x, y, plot, labels, series, isOn, pace = LINEAR_PACE) {
   const { h, m } = F, full = x.range()[1] - m.l + 6;
   const id = "rv" + Math.random().toString(36).slice(2);
   const rect = svg.append("defs").append("clipPath").attr("id", id).append("rect").attr("x", m.l - 2).attr("y", 0).attr("width", full).attr("height", h);
@@ -89,8 +104,8 @@ function revealer(svg, F, x, y, plot, labels, series, isOn) {
     if (reduced.matches) return;
     hide();
     head.style("display", null).attr("opacity", 1);
-    svg.transition("reveal").duration(REVEAL_MS).ease(d3.easeLinear).tween("reveal", () => t => {
-      const yr = 1950 + 150 * t, px = x(yr);
+    svg.transition("reveal").duration(pace.duration).ease(d3.easeLinear).tween("reveal", () => t => {
+      const yr = pace.yearAt(t), px = x(yr);
       rect.attr("width", px - m.l + 2);
       hl.attr("x1", px).attr("x2", px);
       yl.attr("x", Math.min(px, x.range()[1] - 16)).text(Math.floor(yr));
@@ -503,7 +518,7 @@ function co2Chart(G) {
     crosshair(svg, F, x, y, yr => SC.filter(e => on.has(e)).map(e => { const i = G.years[e].indexOf(yr); return i < 0 ? null : [e, G.co2[e][i]]; }).filter(Boolean), v => Math.round(v) + " ppm");
     SC.forEach(e => d3.select(el).selectAll(".l-" + e + ", .end-" + e).attr("opacity", on.has(e) ? 1 : 0));
     d3.select(el).selectAll(".gap").attr("opacity", on.has("ssp126") && on.has("ssp585") ? 1 : 0);
-    cur = revealer(svg, F, x, y, plot, labels, SC.map(e => ({ e, d: lines[e] })), () => on);
+    cur = revealer(svg, F, x, y, plot, labels, SC.map(e => ({ e, d: lines[e] })), () => on, SPLIT_PACE);
   }
   seg("#co2Scen", "s", list => { on = new Set(list); vis(); }, true);
   $("#co2Replay").addEventListener("click", () => cur.reveal());
@@ -724,7 +739,7 @@ function seaLevelChart(G) {
     svg.append("text").attr("class", "muted").attr("x", m.l).attr("y", h - 6).text(F.wide ? "Models: " + models.join(", ") : models.length + " models");
     xh = crosshair(svg, F, x, y, yr => SC.map(e => { const r = S[e].find(d => d.y === yr); return r ? [e, r.v] : null; }).filter(Boolean), v => sign(v) + " cm (model average)");
     setView(false);
-    cur = revealer(svg, F, x, y, plot, labels, SC.map(e => ({ e, d: mean(e) })), () => new Set(SC));
+    cur = revealer(svg, F, x, y, plot, labels, SC.map(e => ({ e, d: mean(e) })), () => new Set(SC), SPLIT_PACE);
   }
   seg("#slView", "v", v => { view = v; setView(true); });
   $("#slReplay").addEventListener("click", () => cur.reveal());
