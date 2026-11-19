@@ -194,7 +194,7 @@ main { display: block; }
 
 /* ---------- write-up ---------- */
 .writeup { position: relative; background: linear-gradient(to bottom, var(--ground-prev), var(--ground) 240px); color: var(--ink); min-height: 100vh; padding: 22vh 40px 26vh calc(var(--rail) + 40px); overflow: hidden; }
-.writeup-in { position: relative; z-index: 1; max-width: 68ch; }
+.writeup-in { position: relative; z-index: 1; max-width: 100ch; }
 .writeup h2 { font-size: 34px; line-height: 1.2; font-weight: 700; margin: 0 0 20px; }
 .stub { margin: 0; font-size: 19px; line-height: 1.6; color: var(--ink-2); }
 .seabed { position: absolute; left: 0; bottom: 0; width: 100%; height: 120px; fill: #0b2136; }
