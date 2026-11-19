@@ -1,95 +1,172 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-zone="sky">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Human Consequence</title>
-<link rel="stylesheet" href="style.css">
+<meta name="description" content="A scroll story through CMIP6 climate models: from the clouds, across the land and into the deep ocean, under low and high emissions.">
 <link rel="icon" href="data:,">
-<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 </head>
 <body>
-<div id="bg"></div>
-<div id="clouds"><span></span><span></span><span></span><span></span></div>
-<div id="rays"></div>
-<canvas id="bubbles"></canvas>
-<div id="depth"><span class="dl">altitude</span> <span id="depthVal">3,000 m</span><div class="bar"><div id="depthDot"></div></div></div>
+<a class="skip" href="#sky">Skip to the story</a>
 
-<main>
-  <!-- SKY -->
-  <section class="hero" data-bg="#8ccbf2" data-alt="3000">
+<div class="water" id="water" aria-hidden="true"><svg class="wave" viewBox="0 0 1200 40" preserveAspectRatio="none"><path d="M0 20 Q 75 4 150 20 T 300 20 T 450 20 T 600 20 T 750 20 T 900 20 T 1050 20 T 1200 20 V 40 H 0 Z"/></svg></div>
+
+<nav id="gauge" class="gauge" aria-label="Descent">
+  <p class="g-read" aria-hidden="true"><span class="g-label">Altitude</span> <b class="g-val">3,000 m</b></p>
+  <div class="g-track">
+    <span class="g-line" aria-hidden="true"></span>
+    <span class="g-dot" aria-hidden="true"></span>
+    <button type="button" data-target="sky" data-alt="2000">Sky</button>
+    <button type="button" data-target="land" data-alt="400">Land</button>
+    <button type="button" data-target="surface" data-alt="0">Ocean surface</button>
+    <button type="button" data-target="deep" data-alt="-1500">Deep ocean</button>
+  </div>
+</nav>
+
+<header class="hero" data-zone="sky" data-alt="3000">
+  <div class="clouds" aria-hidden="true"><span></span><span></span><span></span></div>
+  <div class="hero-in">
     <h1>Human Consequence</h1>
     <p class="lede">Scroll down to fall from the clouds, across the land and into the ocean.</p>
     <p class="byline">Amy Trinh, Minh Pham, Aryan Agarwal · DSC 106 Final Project</p>
-  </section>
+  </div>
+</header>
 
-  <section class="zone" data-bg="#b9e0f8" data-alt="2000">
-    <div class="zonetag">Sky</div>
-    <h2>Where the rain is heading</h2>
-    <p>Change in rainfall compared to 1995-2014, averaged over 8 climate models. Use the slider to move through time and switch between low and high emissions. Click the map, then scroll to zoom.</p>
-    <div class="controls">
-      <span class="seg" id="rainScen"><button data-s="s126">Low emissions</button><button data-s="s585" class="on">High emissions</button></span>
-      <label class="slider">Years <input type="range" id="rainYear" min="0" max="29" value="29"> <b id="rainYearLbl"></b></label>
+<main>
+  <!-- SKY -->
+  <section class="chapter" id="sky" data-zone="sky" aria-label="Sky">
+    <div class="steps">
+      <article class="step" data-panel="rain" data-alt="2000" style="--o:1">
+        <div class="card">
+          <h2>Where the rain is heading</h2>
+          <p>Change in rainfall compared to 1995-2014, averaged over 8 climate models. Use the slider to move through time and switch between low and high emissions. Click the map, then scroll to zoom.</p>
+          <p class="src">Data: CMIP6 precipitation, 8 models, 5-year averages, 4° grid. Grey areas are deserts (under 0.25 mm of rain a day), where a % change isn't meaningful.</p>
+        </div>
+      </article>
     </div>
-    <div id="rainMap" class="map"></div>
-    <div class="legend" id="rainLegend"></div>
-    <p class="src">Data: CMIP6 precipitation, 8 models, 5-year averages, 4° grid. Grey areas are deserts (under 0.25 mm of rain a day), where a % change isn't meaningful.</p>
+    <div class="stage">
+      <div class="panels">
+        <figure class="panel on" data-panel="rain" style="--o:2">
+          <div class="controls">
+            <span class="scen"><span class="seg" id="rainScen" role="group" aria-label="Emissions scenario"><button type="button" data-s="s126">Low emissions</button><button type="button" data-s="s585" class="on">High emissions</button></span>
+            <span class="note" id="rainScenNote" hidden>Scenarios split after 2014</span></span>
+            <label class="slider">Years <input type="range" id="rainYear" min="0" max="29" value="29"> <b id="rainYearLbl">2095–2099</b> <span class="proj" id="rainProj">projected</span></label>
+          </div>
+          <p class="pair" id="rainPair" aria-live="polite"></p>
+          <div id="rainMap" class="map"><p class="status">Loading rainfall data…</p></div>
+          <div class="maptools" data-for="rainMap"><button type="button" data-z="in">Zoom in</button><button type="button" data-z="out">Zoom out</button><button type="button" data-z="reset">Reset</button></div>
+          <div class="legend" id="rainLegend"></div>
+        </figure>
+      </div>
+    </div>
   </section>
 
   <!-- LAND -->
-  <section class="zone" data-bg="#e6dcc0" data-alt="400">
-    <div class="zonetag">Land</div>
-    <h2>What we put into the air</h2>
-    <p>CO₂ in the atmosphere, driven by human emissions. Up to 2014 this is the historical run. After that it splits into a low and a high emissions scenario.</p>
-    <div id="co2Chart" class="chart"></div>
-    <p class="src">Data: GFDL-ESM4 co2mass, converted to ppm. Scenarios: SSP1-2.6 (low), SSP5-8.5 (high).</p>
-  </section>
-
-  <section class="zone" data-bg="#d9c99c" data-alt="60">
-    <h2>More CO₂, warmer oceans</h2>
-    <p>Each dot is one year, plotted by CO₂ level and average sea surface temperature. Hover over a dot to see the year.</p>
-    <div class="controls"><span class="seg multi" id="scatScen"><button data-s="historical" class="on">Historical</button><button data-s="ssp126" class="on">Low</button><button data-s="ssp585" class="on">High</button></span></div>
-    <div id="scatChart" class="chart"></div>
-    <p class="src">Data: GFDL-ESM4, global area-weighted mean sea surface temperature.</p>
-  </section>
-
-  <!-- SURFACE -->
-  <section class="zone deepz" data-bg="#2f9fd3" data-alt="0">
-    <div class="zonetag">Ocean surface</div>
-    <h2>Sea surface temperature, 1950-2100</h2>
-    <p>Press play or drag the slider. Switch to "Change" to see how much each area has warmed since 1950-1979.</p>
-    <div class="controls">
-      <button id="play" class="playbtn">Play</button>
-      <label class="slider wide">Year <input type="range" id="sstYear" min="1950" max="2100" value="2000"> <b id="sstYearLbl"></b></label>
-      <span class="seg" id="sstScen"><button data-s="ssp126">Low</button><button data-s="ssp585" class="on">High</button></span>
-      <span class="seg" id="sstMode"><button data-m="abs" class="on">Temperature</button><button data-m="anom">Change</button></span>
+  <section class="chapter" id="land" data-zone="land" aria-label="Land">
+    <div class="steps">
+      <article class="step" data-panel="co2" data-alt="400" style="--o:1">
+        <div class="card">
+          <h2>What we put into the air</h2>
+          <p>CO₂ in the atmosphere, driven by human emissions. Up to 2014 this is the historical run. After that it splits into a low and a high emissions scenario.</p>
+          <p class="src">Data: GFDL-ESM4 co2mass, converted to ppm. Scenarios: SSP1-2.6 (low), SSP5-8.5 (high).</p>
+        </div>
+      </article>
+      <article class="step" data-panel="scat" data-alt="60" style="--o:3">
+        <div class="card">
+          <h2>More CO₂, warmer oceans</h2>
+          <p>Each dot is one year, plotted by CO₂ level and average sea surface temperature. Hover over a dot to see the year.</p>
+          <p class="src">Data: GFDL-ESM4, global area-weighted mean sea surface temperature.</p>
+        </div>
+      </article>
     </div>
-    <div id="sstMap" class="map"></div>
-    <div class="legend" id="sstLegend"></div>
-    <p class="src">Data: GFDL-ESM4 tos (sea surface temperature), yearly mean, 2° grid. Years after 2014 are projections.</p>
+    <div class="stage">
+      <div class="panels">
+        <figure class="panel on" data-panel="co2" style="--o:2">
+          <div class="controls"><span class="seg multi" id="co2Scen" role="group" aria-label="Series shown"><button type="button" data-s="historical" class="on"><i class="sw hist"></i>Historical</button><button type="button" data-s="ssp126" class="on"><i class="sw low"></i>Low emissions</button><button type="button" data-s="ssp585" class="on"><i class="sw high"></i>High emissions</button></span><button type="button" class="replay" id="co2Replay">Replay</button></div>
+          <div id="co2Chart" class="chart"><p class="status">Loading CO₂ data…</p></div>
+        </figure>
+        <figure class="panel" data-panel="scat" style="--o:4">
+          <div class="controls"><span class="seg multi" id="scatScen" role="group" aria-label="Series shown"><button type="button" data-s="historical" class="on"><i class="sw hist"></i>Historical</button><button type="button" data-s="ssp126" class="on"><i class="sw low"></i>Low emissions</button><button type="button" data-s="ssp585" class="on"><i class="sw high"></i>High emissions</button></span></div>
+          <div id="scatChart" class="chart"><p class="status">Loading temperature data…</p></div>
+        </figure>
+      </div>
+    </div>
   </section>
 
-  <section class="zone deepz" data-bg="#147bb0" data-alt="-150">
-    <h2>How much of the ocean has warmed</h2>
-    <p>Share of ocean area by how much it has warmed since 1950-1979. This follows the year and scenario picked on the map above. The dashed line is 1980.</p>
-    <div id="histChart" class="chart"></div>
+  <!-- OCEAN SURFACE -->
+  <section class="chapter" id="surface" data-zone="surface" aria-label="Ocean surface">
+    <div class="steps">
+      <article class="step" data-panel="sst" data-alt="0" style="--o:1">
+        <div class="card">
+          <h2>Sea surface temperature, 1950-2100</h2>
+          <p>Press play or drag the slider. Switch to "Change" to see how much each area has warmed since 1950-1979.</p>
+          <p class="src">Data: GFDL-ESM4 tos (sea surface temperature), yearly mean, 2° grid. Years after 2014 are projections.</p>
+        </div>
+      </article>
+      <article class="step" data-panel="hist" data-alt="-150" style="--o:4">
+        <div class="card">
+          <h2>How much of the ocean has warmed</h2>
+          <p>Share of ocean area by how much it has warmed since 1950-1979. This follows the year and scenario picked on the map above. The dashed line is 1980.</p>
+        </div>
+      </article>
+    </div>
+    <div class="stage">
+      <div class="controls" style="--o:2">
+        <button type="button" id="play" class="playbtn" aria-pressed="false">Play</button>
+        <label class="slider wide">Year <input type="range" id="sstYear" min="1950" max="2100" value="1950"> <b id="sstYearLbl">1950</b> <span class="proj" id="sstProj" hidden>projected</span></label>
+        <span class="scen"><span class="seg" id="sstScen" role="group" aria-label="Emissions scenario"><button type="button" data-s="ssp126">Low emissions</button><button type="button" data-s="ssp585" class="on">High emissions</button></span>
+        <span class="note" id="sstScenNote">Scenarios split after 2014</span></span>
+        <span class="seg" id="sstMode" role="group" aria-label="Map shows"><button type="button" data-m="abs" class="on">Temperature</button><button type="button" data-m="anom">Change</button></span>
+        <p class="pair" id="sstPair" aria-live="polite"></p>
+      </div>
+      <div class="panels">
+        <figure class="panel on" data-panel="sst" style="--o:3">
+          <div id="sstMap" class="map"><p class="status">Loading ocean temperature data…</p></div>
+          <div class="maptools" data-for="sstMap"><button type="button" data-z="in">Zoom in</button><button type="button" data-z="out">Zoom out</button><button type="button" data-z="reset">Reset</button></div>
+          <div class="legend" id="sstLegend"></div>
+        </figure>
+        <figure class="panel" data-panel="hist" style="--o:5">
+          <div id="histChart" class="chart"><p class="status">Loading ocean temperature data…</p></div>
+        </figure>
+      </div>
+    </div>
   </section>
 
   <!-- DEEP -->
-  <section class="zone deepz" data-bg="#0a3f6b" data-alt="-1500">
-    <div class="zonetag">Deep ocean</div>
-    <h2>Sea level rise from warming water</h2>
-    <p>Water expands as it warms, so sea level goes up even without melting ice. The shaded band is the range across models.</p>
-    <div id="slChart" class="chart"></div>
-    <p class="src">Data: CMIP6 zostoga (global thermosteric sea level), relative to 1995-2014.</p>
+  <section class="chapter" id="deep" data-zone="deep" aria-label="Deep ocean">
+    <div class="steps">
+      <article class="step" data-panel="sl" data-alt="-1500" style="--o:1">
+        <div class="card">
+          <h2>Sea level rise from warming water</h2>
+          <p>Water expands as it warms, so sea level goes up even without melting ice. The shaded band is the range across models.</p>
+          <p class="src">Data: CMIP6 zostoga (global thermosteric sea level), relative to 1995-2014.</p>
+        </div>
+      </article>
+    </div>
+    <div class="stage">
+      <div class="panels">
+        <figure class="panel on" data-panel="sl" style="--o:2">
+          <div class="controls"><span class="seg" id="slView" role="group" aria-label="Show models as"><button type="button" data-v="range" class="on">Model range</button><button type="button" data-v="models">Individual models</button></span><button type="button" class="replay" id="slReplay">Replay</button></div>
+          <div id="slChart" class="chart"><p class="status">Loading sea level data…</p></div>
+        </figure>
+      </div>
+    </div>
   </section>
 
-  <section class="zone deepz writeup" data-bg="#03142a" data-alt="-4000">
-    <h2>Write-up</h2>
-    <p class="stub">[Write-up coming soon.]</p>
+  <section class="writeup" id="writeup" data-zone="abyss" data-alt="-4000" aria-labelledby="writeupTitle">
+    <div class="writeup-in">
+      <h2 id="writeupTitle">Write-up</h2>
+      <p class="stub">[Write-up coming soon.]</p>    </div>
+    <svg class="seabed" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 70 C 160 52 300 88 480 74 S 820 40 1000 62 S 1300 84 1440 66 V 120 H 0 Z"/></svg>
   </section>
 </main>
-<div id="tip"></div>
+<div id="tip" role="status" aria-live="off"></div>
 <script src="main.js"></script>
 </body>
 </html>
