@@ -36,10 +36,137 @@ function seg(sel, attr, fn, multi = false) {
     sync();
     fn(multi ? d3.selectAll(`${sel} button.on`).nodes().map(n => n.dataset[attr]) : this.dataset[attr]);
   });
+  sync();
 }
-const cardWidth = sel => Math.floor(document.querySelector(sel).getBoundingClientRect().width);
+function scenarioLock(sel, locked) {
+  d3.selectAll(`${sel} button`).attr("aria-disabled", locked ? "true" : null);
+  $(sel + "Note").hidden = !locked;
+}
 
-/* ================= scroll environment ================= */
+/* ---------- re-render on width change ---------- */
+const renderers = [];
+let lastW = innerWidth, rT;
+addEventListener("resize", () => {
+  clearTimeout(rT);
+  rT = setTimeout(() => { if (innerWidth === lastW) return; lastW = innerWidth; renderers.forEach(f => f()); layout(); }, 180);
+});
+
+/* ---------- easing: the page's --ease-out token, solved exactly for d3 transitions ---------- */
+function bezier(x1, y1, x2, y2) {
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx, cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  const sx = t => ((ax * t + bx) * t + cx) * t, sy = t => ((ay * t + by) * t + cy) * t, dx = t => (3 * ax * t + 2 * bx) * t + cx;
+  return x => {
+    let t = x;
+    for (let i = 0; i < 8; i++) { const e = sx(t) - x, d = dx(t); if (Math.abs(e) < 1e-5 || !d) break; t -= e / d; }
+    return sy(Math.max(0, Math.min(1, t)));
+  };
+}
+const EASE_OUT = bezier(.16, 1, .3, 1); // = --ease-out in style.css
+const UI_MS = 250;
+
+/* ---------- line charts: a year-by-year reveal the reader can follow ---------- */
+// Lines are uncovered left to right at a constant pace (linear: every year gets the same time),
+// with a playhead showing the year and a dot riding each visible series. Labels arrive at the end.
+const REVEAL_MS = 6000;
+const LINEAR_PACE = { duration: REVEAL_MS, yearAt: t => 1950 + 150 * t };
+// Split pace (CO2 and sea level): history slows as it nears the 2014 split, holds a beat, then the two futures
+// pull away with growing speed. Years per second follow the story, not the clock.
+const SPLIT_PACE = (() => {
+  const A = 3400, HOLD = 350, B = 2900, D = A + HOLD + B;
+  return {
+    duration: D,
+    yearAt: t => {
+      const ms = t * D;
+      if (ms < A) return 1950 + 64 * d3.easeSinOut(ms / A);
+      if (ms < A + HOLD) return 2014;
+      return 2014 + 86 * d3.easeQuadIn((ms - A - HOLD) / B);
+    }
+  };
+})();
+function revealer(svg, F, x, y, plot, labels, series, isOn, pace = LINEAR_PACE) {
+  const { h, m } = F, full = x.range()[1] - m.l + 6;
+  const id = "rv" + Math.random().toString(36).slice(2);
+  const rect = svg.append("defs").append("clipPath").attr("id", id).append("rect").attr("x", m.l - 2).attr("y", 0).attr("width", full).attr("height", h);
+  plot.attr("clip-path", `url(#${id})`);
+  const head = svg.append("g").attr("class", "playhead").style("display", "none").style("pointer-events", "none");
+  const hl = head.append("line").attr("y1", m.t).attr("y2", h - m.b).attr("stroke", "currentColor").attr("opacity", .45);
+  const yl = head.append("text").attr("class", "lbl halo").attr("y", h - m.b - 8).attr("text-anchor", "middle");
+  const dots = head.append("g");
+  const bis = d3.bisector(d => d.y).left;
+  const at = (d, yr) => {
+    if (yr < d[0].y || yr > d[d.length - 1].y) return null;
+    const i = Math.min(d.length - 1, Math.max(1, bis(d, yr))), a = d[i - 1], b = d[i];
+    return a.v + (b.v - a.v) * (b.y === a.y ? 0 : (yr - a.y) / (b.y - a.y));
+  };
+  const stop = () => { svg.interrupt("reveal"); head.interrupt(); labels.interrupt(); };
+  const hide = () => { stop(); rect.attr("width", 0); labels.attr("opacity", 0); };
+  const reveal = () => {
+    if (reduced.matches) return;
+    hide();
+    head.style("display", null).attr("opacity", 1);
+    svg.transition("reveal").duration(pace.duration).ease(d3.easeLinear).tween("reveal", () => t => {
+      const yr = pace.yearAt(t), px = x(yr);
+      rect.attr("width", px - m.l + 2);
+      hl.attr("x1", px).attr("x2", px);
+      yl.attr("x", Math.min(px, x.range()[1] - 16)).text(Math.floor(yr));
+      const pts = series.filter(s => isOn().has(s.e)).map(s => ({ e: s.e, v: at(s.d, yr) })).filter(p => p.v != null);
+      dots.selectAll("circle").data(pts, p => p.e).join("circle").attr("r", 4.5).attr("cx", px).attr("cy", p => y(p.v))
+        .style("fill", p => VAR[p.e]).style("stroke", "var(--ground)").attr("stroke-width", 1.5);
+    }).on("end", () => {
+      rect.attr("width", full);
+      head.transition().duration(UI_MS).ease(EASE_OUT).attr("opacity", 0).on("end", () => head.style("display", "none"));
+      labels.transition().duration(UI_MS + 100).ease(EASE_OUT).attr("opacity", 1);
+    }).on("interrupt", () => { rect.attr("width", full); labels.attr("opacity", 1); head.style("display", "none"); });
+  };
+  return { hide, reveal, stop };
+}
+// play once, the first time the chart's panel comes into view; if the reader is already there, play now
+function armReveal(panelId, get) {
+  if (reduced.matches) return;
+  const panel = document.querySelector(`.panel[data-panel="${panelId}"]`), chapter = panel.closest(".chapter");
+  const r = chapter.getBoundingClientRect();
+  if (r.top < innerHeight * .6 && r.bottom > 0) { if (narrow.matches || panel.classList.contains("on")) get().reveal(); return; }
+  get().hide();
+  let done = false;
+  const fire = () => { if (done) return; done = true; get().reveal(); };
+  panel.addEventListener("shown", fire, { once: true });
+  new IntersectionObserver(([en], ob) => { if (en.isIntersecting && narrow.matches) { ob.disconnect(); fire(); } }, { threshold: .35 }).observe(panel);
+}
+
+/* ---------- ambient motion: clouds in the sky, motes rising off the land, bubbles in the sea ---------- */
+// Pure CSS transform/opacity animations (compositor, no rAF), drawn behind the cards and charts,
+// paused whenever their chapter is off screen, and not shown at all under reduced motion.
+(() => {
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  // keep most particles on the narration side, so the charts on the stage stay quiet
+  const px = () => (narrow.matches || Math.random() < .7 ? rnd(2, narrow.matches ? 98 : 40) : rnd(40, 98)) + "%";
+  const kinds = {
+    cloud: () => { const d = rnd(110, 190); return { "--w": rnd(300, 640) + "px", "--y": rnd(4, 82) + "%", "--d": d + "s", "--delay": -rnd(0, d) + "s", "--o": rnd(.45, .85).toFixed(2), "--rx": rnd(-10, 80) + "vw" }; },
+    mote: () => { const d = rnd(16, 30); return { "--x": px(), "--s": rnd(3, 7) + "px", "--d": d + "s", "--delay": -rnd(0, d) + "s", "--sw": rnd(3, 6) + "s", "--o": rnd(.18, .34).toFixed(2) }; },
+    bubble: () => { const d = rnd(10, 22); return { "--x": px(), "--s": rnd(4, 14) + "px", "--d": d + "s", "--delay": -rnd(0, d) + "s", "--sw": rnd(2.5, 4.5) + "s", "--o": rnd(.3, .6).toFixed(2) }; }
+  };
+  function field(host, kind, n) {
+    const wrap = document.createElement("div"), inner = document.createElement("div");
+    wrap.className = `fx fx-${kind}`; wrap.setAttribute("aria-hidden", "true"); inner.className = "fx-in";
+    const count = narrow.matches ? Math.ceil(n / 2) : n;
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement("span");
+      el.className = kind;
+      for (const [k, v] of Object.entries(kinds[kind]())) el.style.setProperty(k, v);
+      if (kind !== "cloud") el.appendChild(document.createElement("i"));
+      inner.appendChild(el);
+    }
+    wrap.appendChild(inner); host.prepend(wrap);
+    new IntersectionObserver(([en]) => wrap.classList.toggle("run", en.isIntersecting), { rootMargin: "120px 0px" }).observe(host);
+  }
+  field($("#sky"), "cloud", 5);
+  field($("#land"), "mote", 16);
+  field($("#surface"), "bubble", 22);
+  field($("#deep"), "bubble", 16);
+})();
+
+/* ================= scroll: steps, zones, gauge, sea level ================= */
+let layout = () => {};
 (() => {
   const html = document.documentElement;
   const altEls = [...document.querySelectorAll("[data-alt]:not(button)")];
@@ -360,33 +487,43 @@ function rainSection(land, R) {
 
 /* ================= LAND: CO2 ================= */
 function co2Chart(G) {
-  const F = frame("#co2Chart"), { svg, w, h, m } = F;
-  const all = ["historical", "ssp126", "ssp585"].flatMap(e => G.co2[e]);
-  const x = d3.scaleLinear([1950, 2100], [m.l, w - m.r]), y = d3.scaleLinear([d3.min(all) - 10, d3.max(all) + 20], [h - m.b, m.t]).nice();
-  axes(F, x, y, "year", "CO₂ (ppm)");
-  svg.append("rect").attr("x", x(2014)).attr("y", m.t).attr("width", x(2100) - x(2014)).attr("height", h - m.b - m.t).attr("fill", "currentColor").attr("opacity", .04);
-  svg.append("text").attr("x", x(2016)).attr("y", m.t + 14).attr("font-size", 12).attr("opacity", .6).text("projection →");
-  const line = d3.line().x(d => x(d.y)).y(d => y(d.v)).curve(d3.curveMonotoneX);
-  for (const e of ["historical", "ssp126", "ssp585"]) {
-    const d = e === "historical" ? series(G, "co2", e) : withJoin(G, "co2", e);
-    const p = svg.append("path").datum(d).attr("fill", "none").attr("stroke", CH[e]).attr("stroke-width", 3).attr("d", line);
-    const L = p.node().getTotalLength(); p.attr("stroke-dasharray", L).attr("stroke-dashoffset", L);
-    new IntersectionObserver(([en], ob) => { if (en.isIntersecting) { p.transition().duration(1600).delay(e === "historical" ? 0 : 900).attr("stroke-dashoffset", 0); ob.disconnect(); } }, { threshold: .4 }).observe(svg.node());
-    const last = d[d.length - 1];
-    svg.append("text").attr("x", x(last.y) - 4).attr("y", y(last.v) - 8).attr("text-anchor", "end").attr("font-size", 12).attr("font-weight", 600).attr("fill", CH[e]).text(`${NAME[e]} · ${Math.round(last.v)} ppm`);
+  const el = $("#co2Chart"), lines = {};
+  let on = new Set(SC), cur = null;
+  const vis = () => {
+    const t = d3.transition().duration(reduced.matches ? 0 : UI_MS).ease(EASE_OUT), sel = d3.select(el);
+    SC.forEach(e => { sel.selectAll(".l-" + e + ", .end-" + e).transition(t).attr("opacity", on.has(e) ? 1 : 0); });
+    sel.selectAll(".gap").transition(t).attr("opacity", on.has("ssp126") && on.has("ssp585") ? 1 : 0);
+  };
+  function build() {
+    cur?.stop();
+    const F = frame(el, { h: 420 }), { svg, h, m } = F;
+    const x = d3.scaleLinear([1950, 2100], [m.l, F.w - m.r]), y = d3.scaleLinear([280, 1150], [h - m.b, m.t]).nice();
+    svg.attr("aria-label", "Line chart of CO₂ in the atmosphere, 1950 to 2100. It rises from 313 ppm in 1950 to 391 ppm in 2014, then reaches 447 ppm by 2100 with low emissions or 1,102 ppm with high emissions.");
+    svg.append("rect").attr("x", x(2014)).attr("y", m.t).attr("width", x(2100) - x(2014)).attr("height", h - m.b - m.t).attr("fill", "currentColor").attr("opacity", .05);
+    axes(F, x, y, "Year", "CO₂ (ppm)");
+    svg.append("text").attr("class", "muted").attr("x", x(2014) + 8).attr("y", m.t + 16).text("Projection →");
+    const line = d3.line().x(d => x(d.y)).y(d => y(d.v)).curve(d3.curveMonotoneX);
+    const plot = svg.append("g"), labels = svg.append("g");
+    for (const e of SC) {
+      lines[e] = e === "historical" ? series(G, "co2", e) : joined(G, "co2", e);
+      plot.append("path").attr("class", "l-" + e).datum(lines[e]).attr("fill", "none").style("stroke", VAR[e]).attr("stroke-width", e === "historical" ? 2.5 : 3).attr("d", line);
+    }
+    const lo = lines.ssp126.at(-1), hi = lines.ssp585.at(-1), h14 = lines.historical.at(-1);
+    endLabels(labels, F, x, [
+      { key: "ssp585", name: "High emissions", value: `${comma(Math.round(hi.v))} ppm in 2100`, y: y(hi.v), color: VAR.ssp585 },
+      { key: "ssp126", name: "Low emissions", value: `${Math.round(lo.v)} ppm in 2100`, y: y(lo.v), color: VAR.ssp126 }
+    ]);
+    gapBracket(labels, F, x, y(hi.v) + 26, y(lo.v) - 8, `${comma(Math.round(hi.v - lo.v))} ppm apart`);
+    labels.append("text").attr("class", "sub halo end-historical").attr("x", x(2014) - 6).attr("y", y(h14.v) - 12).attr("text-anchor", "end").style("fill", VAR.historical).text(`${Math.round(h14.v)} ppm in 2014`);
+    crosshair(svg, F, x, y, yr => SC.filter(e => on.has(e)).map(e => { const i = G.years[e].indexOf(yr); return i < 0 ? null : [e, G.co2[e][i]]; }).filter(Boolean), v => Math.round(v) + " ppm");
+    SC.forEach(e => d3.select(el).selectAll(".l-" + e + ", .end-" + e).attr("opacity", on.has(e) ? 1 : 0));
+    d3.select(el).selectAll(".gap").attr("opacity", on.has("ssp126") && on.has("ssp585") ? 1 : 0);
+    cur = revealer(svg, F, x, y, plot, labels, SC.map(e => ({ e, d: lines[e] })), () => on, SPLIT_PACE);
   }
-  crosshair(svg, F, x, y, yr => ["historical", "ssp126", "ssp585"].map(e => { const i = G.years[e].indexOf(yr); return i < 0 ? null : [e, G.co2[e][i]]; }).filter(Boolean), v => Math.round(v) + " ppm");
-}
-function crosshair(svg, { w, h, m }, x, y, get, fmt) {
-  const g = svg.append("g").style("display", "none");
-  g.append("line").attr("y1", m.t).attr("y2", h - m.b).attr("stroke", "currentColor").attr("opacity", .35);
-  svg.append("rect").attr("x", m.l).attr("y", m.t).attr("width", w - m.l - m.r).attr("height", h - m.t - m.b).attr("fill", "transparent")
-    .on("mousemove", e => {
-      const yr = Math.round(x.invert(d3.pointer(e)[0])), vals = get(yr);
-      g.style("display", null).select("line").attr("x1", x(yr)).attr("x2", x(yr));
-      g.selectAll("circle").data(vals).join("circle").attr("r", 4.5).attr("cx", x(yr)).attr("cy", d => y(d[1])).attr("fill", d => CH[d[0]]).attr("stroke", "#fff");
-      showTip(e, `<b>${yr}</b><br>` + vals.map(d => `<span style="color:${CH[d[0]]}">●</span> ${NAME[d[0]]}: ${fmt(d[1])}`).join("<br>"));
-    }).on("mouseleave", () => { g.style("display", "none"); hideTip(); });
+  seg("#co2Scen", "s", list => { on = new Set(list); vis(); }, true);
+  $("#co2Replay").addEventListener("click", () => cur.reveal());
+  build(); renderers.push(build);
+  armReveal("co2", () => cur);
 }
 
 /* ================= LAND: CO2 vs SST (connected scatter) ================= */
@@ -565,21 +702,47 @@ function seaLevelChart(G) {
   let view = "range", cur = null, xh = null;
   const agg = e => G.years[e].map((yr, i) => { const v = models.map(k => G.sealevel[k][e]?.[i]).filter(v => v != null); return { y: yr, v: d3.mean(v), lo: d3.min(v), hi: d3.max(v) }; });
   const S = { historical: agg("historical"), ssp126: agg("ssp126"), ssp585: agg("ssp585") };
-  const all = Object.values(S).flat();
-  const x = d3.scaleLinear([1950, 2100], [m.l, w - m.r]), y = d3.scaleLinear([d3.min(all, d => d.lo), d3.max(all, d => d.hi)], [h - m.b, m.t]).nice();
-  axes(F, x, y, "year", "Sea level from ocean warming (cm, vs 1995–2014)");
-  const defs = svg.append("defs");
-  const gr = defs.append("linearGradient").attr("id", "water").attr("x1", 0).attr("x2", 0).attr("y1", 0).attr("y2", 1);
-  gr.append("stop").attr("offset", 0).attr("stop-color", "#5fc8ff").attr("stop-opacity", .45); gr.append("stop").attr("offset", 1).attr("stop-color", "#5fc8ff").attr("stop-opacity", 0);
-  const hiS = [S.historical[S.historical.length - 1], ...S.ssp585];
-  svg.append("path").datum([...S.historical, ...S.ssp585]).attr("fill", "url(#water)").attr("d", d3.area().x(d => x(d.y)).y0(h - m.b).y1(d => y(d.v)).curve(d3.curveMonotoneX));
-  for (const e of ["historical", "ssp126", "ssp585"]) {
-    const d = e === "historical" ? S[e] : [S.historical[S.historical.length - 1], ...S[e]];
-    svg.append("path").datum(d).attr("fill", CH[e]).attr("opacity", .18).attr("d", d3.area().x(d => x(d.y)).y0(d => y(d.lo)).y1(d => y(d.hi)).curve(d3.curveMonotoneX));
-    svg.append("path").datum(d).attr("fill", "none").attr("stroke", CH[e]).attr("stroke-width", 3).attr("d", d3.line().x(d => x(d.y)).y(d => y(d.v)).curve(d3.curveMonotoneX));
-    const last = d[d.length - 1];
-    if (e !== "historical") svg.append("text").attr("x", x(last.y) - 4).attr("y", y(last.v) - 10).attr("text-anchor", "end").attr("font-weight", 700).attr("font-size", 13).attr("fill", CH[e]).text(`${NAME[e]}: ${sign(last.v)} cm by 2100`);
+  const per = (k, e) => G.years[e].map((yr, i) => ({ y: yr, v: G.sealevel[k][e]?.[i] })).filter(d => d.v != null);
+  const mean = e => e === "historical" ? S[e] : [S.historical.at(-1), ...S[e]];
+  const setView = animate => {
+    const sel = d3.select(el), t = d3.transition().duration(animate && !reduced.matches ? UI_MS : 0).ease(EASE_OUT);
+    sel.select(".bands").transition(t).attr("opacity", view === "range" ? 1 : 0);
+    sel.select(".models").style("pointer-events", view === "models" ? null : "none").transition(t).attr("opacity", view === "models" ? 1 : 0);
+    xh?.style("pointer-events", view === "models" ? "none" : null); // let the individual model lines take the hover
+  };
+  function build() {
+    cur?.stop();
+    const F = frame(el, { h: 420 }), { svg, h, m } = F;
+    const all = Object.values(S).flat();
+    const x = d3.scaleLinear([1950, 2100], [m.l, F.w - m.r]), y = d3.scaleLinear([d3.min(all, d => d.lo), d3.max(all, d => d.hi)], [h - m.b, m.t]).nice();
+    const lo = S.ssp126.at(-1), hi = S.ssp585.at(-1);
+    svg.attr("aria-label", `Line chart of sea level rise from ocean warming, 1950 to 2100, relative to 1995–2014. By 2100 the model average reaches ${sign(lo.v)} cm with low emissions and ${sign(hi.v)} cm with high emissions.`);
+    svg.append("rect").attr("x", x(2014)).attr("y", m.t).attr("width", x(2100) - x(2014)).attr("height", h - m.b - m.t).attr("fill", "currentColor").attr("opacity", .05);
+    axes(F, x, y, "Year", "Sea level from ocean warming (cm, vs 1995–2014)", d3.format("d"), d => sign(d, 0));
+    svg.append("line").attr("x1", m.l).attr("x2", x.range()[1]).attr("y1", y(0)).attr("y2", y(0)).attr("stroke", "currentColor").attr("opacity", .45);
+    const area = d3.area().x(d => x(d.y)).y0(d => y(d.lo)).y1(d => y(d.hi)).curve(d3.curveMonotoneX);
+    const ln = d3.line().x(d => x(d.y)).y(d => y(d.v)).curve(d3.curveMonotoneX);
+    const plot = svg.append("g"), labels = svg.append("g");
+    const bands = plot.append("g").attr("class", "bands"), mods = plot.append("g").attr("class", "models");
+    for (const e of SC) {
+      bands.append("path").datum(mean(e)).style("fill", VAR[e]).attr("opacity", .2).attr("d", area);
+      for (const k of models) mods.append("path").datum(per(k, e)).attr("fill", "none").style("stroke", VAR[e]).attr("stroke-width", 1.2).attr("opacity", .75).attr("d", ln)
+        .on("mousemove", ev => showTip(ev, `<b>${k}</b><br>${NAME[e]}`)).on("mouseleave", hideTip);
+    }
+    for (const e of SC) plot.append("path").datum(mean(e)).attr("fill", "none").style("stroke", VAR[e]).attr("stroke-width", 3).attr("d", ln).style("pointer-events", "none");
+    endLabels(labels, F, x, [
+      { key: "ssp585", name: "High emissions", value: `${sign(hi.v)} cm by 2100`, y: y(hi.v), color: VAR.ssp585 },
+      { key: "ssp126", name: "Low emissions", value: `${sign(lo.v)} cm by 2100`, y: y(lo.v), color: VAR.ssp126 }
+    ]);
+    gapBracket(labels, F, x, y(hi.v) + 26, y(lo.v) - 8, `${(hi.v - lo.v).toFixed(1)} cm apart`);
+    svg.append("text").attr("class", "muted").attr("x", x(2014) + 8).attr("y", m.t + 16).text("Projection →");
+    svg.append("text").attr("class", "muted").attr("x", m.l).attr("y", h - 6).text(F.wide ? "Models: " + models.join(", ") : models.length + " models");
+    xh = crosshair(svg, F, x, y, yr => SC.map(e => { const r = S[e].find(d => d.y === yr); return r ? [e, r.v] : null; }).filter(Boolean), v => sign(v) + " cm (model average)");
+    setView(false);
+    cur = revealer(svg, F, x, y, plot, labels, SC.map(e => ({ e, d: mean(e) })), () => new Set(SC), SPLIT_PACE);
   }
-  crosshair(svg, F, x, y, yr => ["historical", "ssp126", "ssp585"].map(e => { const r = S[e].find(d => d.y === yr); return r ? [e, r.v] : null; }).filter(Boolean), v => sign(v) + " cm");
-  svg.append("text").attr("x", m.l + 8).attr("y", m.t + 14).attr("font-size", 11).attr("opacity", .6).text(`${models.length} models: ${models.join(", ")}`);
+  seg("#slView", "v", v => { view = v; setView(true); });
+  $("#slReplay").addEventListener("click", () => cur.reveal());
+  build(); renderers.push(build);
+  armReveal("sl", () => cur);
 }
