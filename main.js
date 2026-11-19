@@ -171,7 +171,7 @@ let layout = () => {};
   const html = document.documentElement;
   const altEls = [...document.querySelectorAll("[data-alt]:not(button)")];
   const zoneEls = [...document.querySelectorAll("[data-zone]:not(html):not(.gauge)")];
-  const surface = $("#surface"), water = $("#water");
+  const surface = $("#surface");
   const gauge = $("#gauge");
   // a second gauge in ocean colours, shown below the waterline while the water passes the gauge
   const under = gauge.cloneNode(true);
@@ -211,6 +211,12 @@ let layout = () => {};
     if (i === 0) alt = pts[0].a;
     else if (i < 0) alt = pts[pts.length - 1].a;
     else { const a = pts[i - 1], b = pts[i]; alt = a.a + (b.a - a.a) * Math.max(0, Math.min(1, (mid - a.y) / (b.y - a.y))); }
+    // The crossing is one gesture led by the waterline: the wave rides the top of the ocean chapter
+    // (native scroll, so it never lags), and the gauge reading and colour follow that same line.
+    const st = surface.getBoundingClientRect().top, wt = st - 18; // 18px: middle of the wave crest
+    const gr = gauge.getBoundingClientRect(), gm = gr.top + gr.height / 2;
+    const near = wt < innerHeight + 40 && wt > -innerHeight;
+    if (near) alt = wt > gm ? Math.max(0, Math.min(alt, 60 * (wt - gm) / Math.max(1, innerHeight - gm))) : Math.min(alt, 0);
     const near0 = Math.abs(alt) < 5;
     const label = near0 ? "Sea level" : alt > 0 ? "Altitude" : "Depth";
     const val = near0 ? "0 m" : comma(Math.round(Math.abs(alt) / 10) * 10) + " m";
@@ -225,18 +231,16 @@ let layout = () => {};
       g.querySelector(".g-dot").style.top = alt01(alt) * trackH + "px";
       g.querySelectorAll(".g-track button").forEach(b => b.setAttribute("aria-current", String(b.dataset.target === chapterOf[zone])));
     });
-    // the water leads the ocean chapter, its wave edge sweeping up over the land stage as the reader leaves it
-    const lead = narrow.matches ? .04 : .12; // small lead: the wave never covers a chart the reader is still on
-    const st = surface.getBoundingClientRect().top, wt = Math.max(0, Math.min(innerHeight, st - innerHeight * lead));
-    const wet = st < innerHeight * (1 + lead) && st > -innerHeight;
-    water.classList.toggle("on", wet);
-    if (wet) water.style.transform = `translateY(${wt}px)`;
-    const gr = gauge.getBoundingClientRect();
-    if (wet && zone === "land" && wt < gr.bottom) {
-      under.hidden = false;
-      gauge.style.clipPath = `inset(0 0 ${Math.max(0, gr.bottom - wt)}px 0)`;
-      under.style.clipPath = `inset(${Math.max(0, wt - gr.top)}px 0 0 0)`;
-    } else { under.hidden = true; gauge.style.clipPath = ""; }
+    // While the waterline is between the gauge's top and the bottom of the screen, the gauge above it keeps
+    // land colours (whatever the page zone says) and an ocean-coloured copy shows below it.
+    if (near && wt > gr.top) {
+      gauge.dataset.zone = "land";
+      if (wt < gr.bottom) {
+        under.hidden = false;
+        gauge.style.clipPath = `inset(0 0 ${gr.bottom - wt}px 0)`;
+        under.style.clipPath = `inset(${wt - gr.top}px 0 0 0)`;
+      } else { under.hidden = true; gauge.style.clipPath = ""; }
+    } else { delete gauge.dataset.zone; under.hidden = true; gauge.style.clipPath = ""; }
   }
   let ticking = false;
   addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(() => { ticking = false; update(); }); } }, { passive: true });

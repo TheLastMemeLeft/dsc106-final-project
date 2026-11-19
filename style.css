@@ -38,7 +38,7 @@
   --ease-out: cubic-bezier(.16, 1, .3, 1);
   --ease-sine: cubic-bezier(.37, 0, .63, 1); /* easeInOutSine: gentle back-and-forth sway */
   --press: 160ms;
-  --rail: 132px;
+  --rail: 156px;
   color-scheme: light;
 }
 
@@ -56,14 +56,14 @@ h1, h2, button, input, .controls, .src, .byline, .legend, .gauge, #tip, .chart, 
 .skip:focus { top: 12px; }
 
 /* ---------- gauge (drawn twice during the sea level crossing, clipped at the waterline) ---------- */
-.gauge { position: fixed; left: 24px; top: 50%; transform: translateY(-50%); z-index: 10; width: 104px; color: var(--ink); }
+.gauge { position: fixed; left: 24px; top: 50%; transform: translateY(-50%); z-index: 10; width: 132px; color: var(--ink); }
 .gauge[hidden] { display: none; }
-.g-read { margin: 0 0 14px; font-size: 13px; line-height: 1.35; color: var(--ink-2); }
-.g-read b { display: block; color: var(--ink); font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.g-read { margin: 0 0 16px; font-size: 15px; line-height: 1.35; color: var(--ink-2); }
+.g-read b { display: block; color: var(--ink); font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .g-track { position: relative; height: 300px; }
 .g-line { position: absolute; left: 4px; top: 0; bottom: 0; width: 1px; background: currentColor; opacity: .45; }
 .g-dot { position: absolute; left: 0; top: 0; width: 9px; height: 9px; margin-top: -4px; border-radius: 50%; background: currentColor; }
-.g-track button { position: absolute; left: 0; transform: translateY(-50%); display: flex; align-items: center; gap: 8px; padding: 4px 0; min-height: 28px; border: 0; background: none; color: var(--ink-2); font-size: 13px; font-weight: 500; cursor: pointer; text-align: left; white-space: nowrap; }
+.g-track button { position: absolute; left: 0; transform: translateY(-50%); display: flex; align-items: center; gap: 8px; padding: 4px 0; min-height: 28px; border: 0; background: none; color: var(--ink-2); font-size: 15px; font-weight: 500; cursor: pointer; text-align: left; white-space: nowrap; }
 .g-track button::before { content: ""; width: 9px; height: 1px; background: currentColor; flex: none; }
 .g-track button { transition: scale var(--press) var(--ease-out), color .2s ease; }
 .g-track button[aria-current="true"] { color: var(--ink); }
@@ -91,7 +91,7 @@ h1, h2, button, input, .controls, .src, .byline, .legend, .gauge, #tip, .chart, 
 main { display: block; }
 .chapter { position: relative; z-index: 0; display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); column-gap: 48px; padding: 0 40px 0 calc(var(--rail) + 40px); background: linear-gradient(to bottom, var(--ground-prev), var(--ground) 180px); color: var(--ink); }
 #sky.chapter { background: var(--ground); }
-#surface, #deep, .writeup { z-index: 2; } /* the ocean chapters ride over the rising water */
+#surface, #deep, .writeup { z-index: 2; } /* the ocean chapters ride over the end of the land */
 .steps { position: relative; z-index: 2; }
 .step { min-height: 100vh; display: flex; align-items: center; padding: 10vh 0; }
 #sky .step { align-items: flex-start; padding-top: 2vh; } /* the first card peeks into the opening viewport */
@@ -190,16 +190,21 @@ main { display: block; }
 @keyframes rise { 0% { transform: translateY(0); opacity: 0; } 12% { opacity: var(--o); } 82% { opacity: var(--o); } 100% { transform: translateY(-112vh); opacity: 0; } }
 @keyframes sway { from { transform: translateX(-9px); } to { transform: translateX(9px); } }
 
-/* ---------- sea level: water rises ahead of the ocean chapters ---------- */
-.water { position: fixed; left: 0; right: 0; top: 0; height: 100vh; z-index: 1; pointer-events: none; background: var(--sea); transform: translateY(100vh); display: none; }
-.water.on { display: block; }
-.wave { position: absolute; left: 0; width: 100%; height: 40px; top: -39px; fill: var(--sea); }
+/* ---------- sea level: the ocean chapter rises over the end of the land ---------- */
+/* The wave rides the top of the ocean chapter, so it moves with native scroll and never lags.
+   The land keeps extra room at its foot; the ocean overlaps exactly that room, so the waterline
+   sweeps up over empty ground, never over the land chart. */
+#land { padding-bottom: 20vh; }
+#surface { margin-top: -16vh; padding-top: 16vh; }
+.sea-wave { position: absolute; left: 0; top: -39px; width: 100%; height: 40px; pointer-events: none; }
+.sea-wave .front { fill: var(--sea); }
+.sea-wave .back { fill: var(--sea); opacity: .45; }
 
 /* ---------- write-up ---------- */
 .writeup { position: relative; background: linear-gradient(to bottom, var(--ground-prev), var(--ground) 240px); color: var(--ink); min-height: 100vh; padding: 22vh 40px 26vh calc(var(--rail) + 40px); overflow: hidden; }
-.writeup-in { position: relative; z-index: 1; max-width: 100ch; }
-.writeup h2 { font-size: 34px; line-height: 1.2; font-weight: 700; margin: 0 0 20px; }
-.stub { margin: 0; font-size: 19px; line-height: 1.6; color: var(--ink-2); }
+.writeup-in { position: relative; z-index: 1; max-width: 100ch; font-size: 21px; } /* ch follows this size, so larger text also means a wider column */
+.writeup h2 { font-size: 40px; line-height: 1.15; font-weight: 700; margin: 0 0 24px; }
+.stub { margin: 0; font-size: 21px; line-height: 1.65; color: var(--ink-2); }
 .seabed { position: absolute; left: 0; bottom: 0; width: 100%; height: 120px; fill: #0b2136; }
 
 /* ---------- tooltip ---------- */
@@ -210,10 +215,10 @@ main { display: block; }
   :root { --rail: 0px; }
   .gauge { left: 0; right: 0; top: 0; transform: none; width: auto; display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: color-mix(in srgb, var(--ground) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--rule); }
   .g-read { margin: 0; display: flex; gap: 6px; align-items: baseline; flex: none; }
-  .g-read b { display: inline; font-size: 15px; }
+  .g-read b { display: inline; font-size: 17px; }
   .g-track { height: auto; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
   .g-line, .g-dot { display: none; }
-  .g-track button { position: static; transform: none; min-height: 36px; padding: 4px 8px; }
+  .g-track button { position: static; transform: none; min-height: 36px; padding: 4px 8px; font-size: 14px; }
   .g-track button::before { display: none; }
   .hero { padding: 120px 16px 48px; min-height: 80vh; }
   .chapter { display: grid; grid-template-columns: minmax(0, 1fr); padding: 48px 16px; }
@@ -229,6 +234,11 @@ main { display: block; }
   .slider { flex-wrap: wrap; width: 100%; }
   .slider input, .slider.wide input { width: 100%; flex: 1 1 160px; }
   .writeup { padding: 96px 16px 160px; }
+  .writeup-in { font-size: 19px; }
+  .stub { font-size: 19px; }
+  .writeup h2 { font-size: 32px; }
+  #land { padding-bottom: 14vh; }
+  #surface { margin-top: -10vh; padding-top: 10vh; }
 }
 
 /* reduced motion: fewer and gentler, not zero. Fades stay; drifting, rising and sliding go. */
