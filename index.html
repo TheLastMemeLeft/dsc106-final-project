@@ -31,7 +31,7 @@
   <div class="clouds" aria-hidden="true"><span></span><span></span><span></span></div>
   <div class="hero-in">
     <h1>Human Consequence</h1>
-    <p class="lede">Scroll down to fall from the clouds, across the land and into the ocean.</p>
+    <p class="lede">The emissions we choose now decide how far the climate shifts, from the clouds down to the deep ocean. Scroll down to follow two futures: one with low emissions and one with high emissions.</p>
     <p class="byline">Amy Trinh, Minh Pham, Aryan Agarwal · DSC 106 Final Project</p>
   </div>
 </header>
@@ -43,7 +43,8 @@
       <article class="step" data-panel="rain" data-alt="2000" style="--o:1">
         <div class="card">
           <h2>Where the rain is heading</h2>
-          <p>Change in rainfall compared to 1995-2014, averaged over 8 climate models. Use the slider to move through time and switch between low and high emissions. Click the map, then scroll to zoom.</p>
+          <p>Climate models agree that rain is shifting. Some regions get wetter and others get drier, and the shift is far stronger with high emissions. The rain doesn't cause the changes further down. It's a symptom of the same warming, and the rest of the page traces where that warming comes from.</p>
+          <p>The map shows the change in rainfall compared to 1995-2014, averaged over 8 models. Move the slider through time and switch between low and high emissions. Click the map, then scroll to zoom.</p>
           <p class="src">Data: CMIP6 precipitation, 8 models, 5-year averages, 4° grid. Grey areas are deserts (under 0.25 mm of rain a day), where a % change isn't meaningful.</p>
         </div>
       </article>
@@ -71,15 +72,16 @@
       <article class="step" data-panel="co2" data-alt="400" style="--o:1">
         <div class="card">
           <h2>What we put into the air</h2>
-          <p>CO₂ in the atmosphere, driven by human emissions. Up to 2014 this is the historical run. After that it splits into a low and a high emissions scenario.</p>
+          <p>It starts here. Human emissions pushed CO₂ in the air from 313 ppm in 1950 to 391 ppm in 2014. After 2014 the path depends on what we choose. With low emissions, CO₂ peaks around 2061 and then starts to fall. With high emissions, it reaches 1,102 ppm by 2100.</p>
           <p class="src">Data: GFDL-ESM4 co2mass, converted to ppm. Scenarios: SSP1-2.6 (low), SSP5-8.5 (high).</p>
         </div>
       </article>
       <article class="step" data-panel="scat" data-alt="60" style="--o:3">
         <div class="card">
           <h2>More CO₂, warmer oceans</h2>
-          <p>Each dot is one year, plotted by CO₂ level and average sea surface temperature. Hover over a dot to see the year.</p>
-          <p class="src">Data: GFDL-ESM4, global area-weighted mean sea surface temperature.</p>
+          <p>As CO₂ climbs, the ocean surface warms with it. In the model the two rise almost in step. By 2100 the sea surface averages 18.8 °C with low emissions and 20.7 °C with high emissions.</p>
+          <p>Each dot is one year. Hover over a dot to see the year.</p>
+          <p class="src">Data: GFDL-ESM4 (one model, the same one as the CO₂ chart), global area-weighted mean sea surface temperature. The scenarios also differ in other gases and aerosols, so this shows CO₂ and warming rising together, not CO₂ alone.</p>
         </div>
       </article>
     </div>
@@ -104,14 +106,15 @@
       <article class="step" data-panel="sst" data-alt="0" style="--o:1">
         <div class="card">
           <h2>Sea surface temperature, 1950-2100</h2>
-          <p>Press play or drag the slider. Switch to "Change" to see how much each area has warmed since 1950-1979.</p>
+          <p>The warming isn't spread evenly, and almost no part of the ocean escapes it. Press play to watch it spread. Switch to "Change" to see how much each area has warmed since 1950-1979.</p>
           <p class="src">Data: GFDL-ESM4 tos (sea surface temperature), yearly mean, 2° grid. Years after 2014 are projections.</p>
         </div>
       </article>
       <article class="step" data-panel="hist" data-alt="-150" style="--o:4">
         <div class="card">
           <h2>How much of the ocean has warmed</h2>
-          <p>Share of ocean area by how much it has warmed since 1950-1979. This follows the year and scenario picked on the map above. The dashed line is 1980.</p>
+          <p>By 2100 the average patch of ocean has warmed by 0.9 °C with low emissions and by 2.8 °C with high emissions, compared with 1950-1979. The whole distribution moves, not just a few hot spots.</p>
+          <p>The bars show the share of ocean area by how much it has warmed. They follow the year and scenario picked on the map. The dashed line is 1980.</p>
         </div>
       </article>
     </div>
@@ -140,17 +143,41 @@
   <!-- DEEP -->
   <section class="chapter" id="deep" data-zone="deep" aria-label="Deep ocean">
     <div class="steps">
-      <article class="step" data-panel="sl" data-alt="-1500" style="--o:1">
+      <article class="step" data-panel="depth" data-alt="-800" style="--o:1">
+        <div class="card">
+          <h2>Where the heat goes</h2>
+          <p id="depthCopy">The surface is only the start. The ocean keeps soaking up heat and carrying it down. With low emissions, the surface stops warming after CO₂ peaks around 2061. Yet the water at 1,000 m keeps warming: from +0.2 °C in 2061 to +0.45 °C in 2100. That sinking heat is what keeps sea level rising.</p>
+          <p>Each line shows how much the ocean has warmed at each depth since 1950-1979. Press play or drag the slider to watch the heat sink.</p>
+          <p>Switch to "Over time" to line this up with the other charts. After 2061 the surface line goes flat, but the heat stored in the top 2,000 m keeps climbing, the same shape as sea level in the next chart.</p>
+          <p class="src">Data: GFDL-ESM4 thetao (sea water potential temperature, the same model as the sea surface map), global area-weighted mean at each depth, yearly mean.</p>
+        </div>
+      </article>
+      <article class="step" data-panel="sl" data-alt="-1500" style="--o:3">
         <div class="card">
           <h2>Sea level rise from warming water</h2>
-          <p>Water expands as it warms, so sea level goes up even without melting ice. The shaded band is the range across models.</p>
-          <p class="src">Data: CMIP6 zostoga (global thermosteric sea level), relative to 1995-2014.</p>
+          <p>Water expands as it warms, so sea level rises even without any melting ice. But the ocean is slow. With low emissions, CO₂ peaks around 2061 and the sea surface stops warming, yet sea level keeps climbing. It goes from +10.6 cm in 2061 to +16.4 cm in 2100. Heat that's already in the ocean keeps sinking deeper and expanding the water.</p>
+          <p>Sea level follows the heat stored in the top 2,000 m from the previous chart almost exactly (correlation 0.999, every year, both futures). It doesn't follow CO₂ or the surface: after 2061 with low emissions, CO₂ falls and the surface levels off, while stored heat and sea level keep rising together.</p>
+          <p>The shaded band is the range across models.</p>
+          <p class="src">Data: CMIP6 zostoga (global thermosteric sea level: expansion from heat only, not added water from rain or ice), averaged over 4 models (ACCESS-CM2, IPSL-CM6A-LR, MIROC6, MPI-ESM1-2-LR), relative to 1995-2014. These are different models from the GFDL-ESM4 run used for CO₂ and temperature.</p>
+        </div>
+      </article>
+      <article class="step" data-panel="sl" data-alt="-2500" style="--o:5">
+        <div class="card">
+          <h2>So the timing matters</h2>
+          <p>Every chart on this page splits at the same point. By 2100 the two futures are 655 ppm of CO₂, 1.9 °C of sea surface temperature and 16.3 cm of sea level apart. And because the ocean keeps rising after emissions fall, every decade we wait adds sea level rise we can't take back. Cutting emissions sooner gives the smaller number. Waiting gives the bigger one.</p>
         </div>
       </article>
     </div>
     <div class="stage">
       <div class="panels">
-        <figure class="panel on" data-panel="sl" style="--o:2">
+        <figure class="panel on" data-panel="depth" style="--o:2">
+          <div class="controls"><span class="seg" id="depthView" role="group" aria-label="Show warming"><button type="button" data-v="depth" class="on">By depth</button><button type="button" data-v="time">Over time</button></span>
+            <button type="button" id="depthPlay" class="playbtn" aria-pressed="false">Play</button>
+            <label class="slider wide" id="depthYearCtl">Year <input type="range" id="depthYear" min="1950" max="2100" value="2100"> <b id="depthYearLbl">2100</b> <span class="proj" id="depthProj">projected</span></label></div>
+          <p class="pair" id="depthPair" aria-live="polite"></p>
+          <div id="depthChart" class="chart"><p class="status">Loading deep ocean data…</p></div>
+        </figure>
+        <figure class="panel" data-panel="sl" style="--o:4">
           <div class="controls"><span class="seg" id="slView" role="group" aria-label="Show models as"><button type="button" data-v="range" class="on">Model range</button><button type="button" data-v="models">Individual models</button></span><button type="button" class="replay" id="slReplay">Replay</button></div>
           <div id="slChart" class="chart"><p class="status">Loading sea level data…</p></div>
         </figure>

@@ -125,7 +125,7 @@ function armReveal(panelId, get) {
   if (reduced.matches) return;
   const panel = document.querySelector(`.panel[data-panel="${panelId}"]`), chapter = panel.closest(".chapter");
   const r = chapter.getBoundingClientRect();
-  if (r.top < innerHeight * .6 && r.bottom > 0) { if (narrow.matches || panel.classList.contains("on")) get().reveal(); return; }
+  if (r.top < innerHeight * .6 && r.bottom > 0 && (narrow.matches || panel.classList.contains("on"))) { get().reveal(); return; }
   get().hide();
   let done = false;
   const fire = () => { if (done) return; done = true; get().reveal(); };
@@ -372,10 +372,10 @@ function legend(sel, color, label, fmtTick, maxW) {
 }
 
 /* ================= chart frame ================= */
-function frame(el, { h = 380, ml = 56 } = {}) {
+function frame(el, { h = 380, ml = 56, narrowRatio = .78 } = {}) {
   el.innerHTML = "";
   const w = Math.max(240, widthOf(el)), wide = w >= 560; // a hidden pane can report ~0; the resize pass redraws at the real width
-  const H = narrow.matches ? Math.min(h, Math.round(w * .78)) : Math.min(h, Math.max(260, innerHeight - 260));
+  const H = narrow.matches ? Math.min(h, Math.round(w * narrowRatio)) : Math.min(h, Math.max(260, innerHeight - 260));
   const m = { l: ml, r: wide ? 148 : 16, t: 22, b: 40 };
   const svg = d3.select(el).append("svg").attr("width", w).attr("height", H).attr("role", "img");
   return { svg, w, h: H, m, wide };
@@ -417,6 +417,19 @@ function annotate(g, px, py, dx, dy, text, { anchor = "start", color = "currentC
   a.append("text").attr("class", "lbl halo").attr("x", px + dx + (anchor === "start" ? 2 : anchor === "end" ? -2 : 0)).attr("y", py + dy + (dy < 0 ? -2 : 10)).attr("text-anchor", anchor).style("fill", color).text(text);
   return a;
 }
+// a dashed year marker with a dot on the line and a label: used to tie the CO₂ peak to the sea level chart
+function yearMarker(g, { h, m }, x, y, yr, v, text, { color = "currentColor", cls = "", dx = -12, dy = 46, anchor = "end" } = {}) {
+  const a = g.append("g").attr("class", "year-marker " + cls);
+  a.append("line").attr("x1", x(yr)).attr("x2", x(yr)).attr("y1", m.t + 24).attr("y2", h - m.b)
+    .attr("stroke", color).attr("stroke-dasharray", "3 4").attr("opacity", .6);
+  a.append("circle").attr("cx", x(yr)).attr("cy", y(v)).attr("r", 4.5).style("fill", color).attr("stroke", "#fff").attr("stroke-width", 1.5);
+  const t = annotate(a, x(yr), y(v), dx, dy, text, { anchor, color }).select("text");
+  const b = t.node().getBBox(), over = b.x + b.width - (x.range()[1] + m.r - 4); // keep the label inside the svg
+  if (over > 0) t.attr("x", +t.attr("x") - over);
+  return a;
+}
+// the year low-emissions CO₂ stops rising
+const co2PeakYear = G => { const c = G.co2.ssp126; return G.years.ssp126[c.indexOf(d3.max(c))]; };
 function crosshair(svg, { h, m }, x, y, get, fmt) {
   const g = svg.append("g").style("display", "none");
   g.append("line").attr("y1", m.t).attr("y2", h - m.b).attr("stroke", "currentColor").attr("opacity", .4);
@@ -444,13 +457,16 @@ function fail(ids, what) {
 }
 const fetchJSON = url => fetch(url).then(r => { if (!r.ok) throw new Error(`${url}: ${r.status}`); return r.json(); });
 const geoP = fetchJSON("data/world_geo.json");
-fetchJSON("data/global.json").then(G => { co2Chart(G); scatterChart(G); seaLevelChart(G); })
+const globalP = fetchJSON("data/global.json");
+globalP.then(G => { co2Chart(G); scatterChart(G); seaLevelChart(G); })
   .catch(fail(["#co2Chart", "#scatChart", "#slChart"], "the CO₂, temperature and sea level data"));
 Promise.all([geoP, fetchJSON("data/rain_data.json")]).then(([geo, R]) => rainSection(geo.land, R))
   .catch(fail(["#rainMap"], "the rainfall data"));
 Promise.all([geoP, fetchJSON("data/sst_meta.json"), fetch("data/sst.bin").then(r => { if (!r.ok) throw new Error("sst.bin: " + r.status); return r.arrayBuffer(); })])
   .then(([geo, meta, buf]) => sstSection(geo.land, meta, new Int16Array(buf)))
   .catch(fail(["#sstMap", "#histChart"], "the ocean temperature data"));
+Promise.all([globalP, fetchJSON("data/ocean_depth.json")]).then(([G, D]) => depthChart(D, co2PeakYear(G)))
+  .catch(fail(["#depthChart"], "the deep ocean data"));
 
 /* ================= SKY: rainfall ================= */
 function rainSection(land, R) {
@@ -519,6 +535,8 @@ function co2Chart(G) {
     ]);
     gapBracket(labels, F, x, y(hi.v) + 26, y(lo.v) - 8, `${comma(Math.round(hi.v - lo.v))} ppm apart`);
     labels.append("text").attr("class", "sub halo end-historical").attr("x", x(2014) - 6).attr("y", y(h14.v) - 12).attr("text-anchor", "end").style("fill", VAR.historical).text(`${Math.round(h14.v)} ppm in 2014`);
+    const pk = co2PeakYear(G), pkV = G.co2.ssp126[G.years.ssp126.indexOf(pk)];
+    yearMarker(labels, F, x, y, pk, pkV, F.wide ? `Low emissions: CO₂ peaks in ${pk}, then falls` : `Low peaks in ${pk}`, { color: VAR.ssp126, cls: "end-ssp126" });
     crosshair(svg, F, x, y, yr => SC.filter(e => on.has(e)).map(e => { const i = G.years[e].indexOf(yr); return i < 0 ? null : [e, G.co2[e][i]]; }).filter(Boolean), v => Math.round(v) + " ppm");
     SC.forEach(e => d3.select(el).selectAll(".l-" + e + ", .end-" + e).attr("opacity", on.has(e) ? 1 : 0));
     d3.select(el).selectAll(".gap").attr("opacity", on.has("ssp126") && on.has("ssp585") ? 1 : 0);
@@ -699,6 +717,155 @@ function sstSection(land, meta, Q) {
   build(); renderers.push(build);
 }
 
+/* ================= DEEP: warming by depth ================= */
+const DEPTH_MAX = 2000;
+function depthChart(D, peakYr) {
+  const el = $("#depthChart");
+  // "Over time" view: warming vs 1995-2014 (the sea level chart's baseline) at the surface and averaged over the top 2,000 m
+  const wTop = D.level_bounds.map(([a, b]) => Math.max(0, Math.min(b, DEPTH_MAX) - a)), wSum = d3.sum(wTop);
+  const ref95 = D.levels.map((_, k) => d3.mean(D.years.historical.map((y, i) => y >= 1995 && y <= 2014 ? D.temp.historical[i][k] : null).filter(v => v != null)));
+  const tsOf = e => D.years[e].map((y, i) => { const t = D.temp[e][i]; return { y, surf: t[0] - ref95[0], top: d3.sum(t, (v, k) => (v - ref95[k]) * wTop[k]) / wSum }; });
+  const TS = { historical: tsOf("historical") };
+  for (const e of ["ssp126", "ssp585"]) TS[e] = [TS.historical.at(-1), ...tsOf(e)];
+  const avgOf = (e, key, y0, y1) => d3.mean(TS[e].filter(d => d.y >= y0 && d.y <= y1), d => d[key]);
+  let view = "depth";
+  const keep = D.levels.map((z, k) => z <= DEPTH_MAX + 100 ? k : -1).filter(k => k >= 0);
+  const z = keep.map(k => D.levels[k]);
+  // baseline: 1950-1979 mean at each depth
+  const hy = D.years.historical, base = keep.map(k => d3.mean(hy.map((y, i) => y <= 1979 ? D.temp.historical[i][k] : null).filter(v => v != null)));
+  const prof = (e, yr) => { const i = D.years[e].indexOf(yr); return i < 0 ? null : keep.map((k, j) => ({ z: z[j], v: D.temp[e][i][k] - base[j] })); };
+  const at = (p, depth) => { const j = d3.bisector(d => d.z).left(p, depth); const a = p[Math.max(0, j - 1)], b = p[Math.min(p.length - 1, j)]; return a.z === b.z ? a.v : a.v + (b.v - a.v) * (depth - a.z) / (b.z - a.z); };
+  const MARK = 1000;
+  const all = ["ssp126", "ssp585"].flatMap(e => D.years[e].flatMap(y => prof(e, y))).concat(hy.flatMap(y => prof("historical", y)));
+  let yr = 2100, timer = null, draw = null;
+  const series = () => yr <= 2014 ? [["historical", prof("historical", yr)]] : [["ssp126", prof("ssp126", yr)], ["ssp585", prof("ssp585", yr)]];
+  const build = () => view === "time" ? buildTime() : buildDepth();
+  function buildTime() {
+    draw = null;
+    const F = frame(el, { h: 460, narrowRatio: 1.25 }), { svg, h, m } = F, gap = 46;
+    const x = d3.scaleLinear([1950, 2100], [m.l, F.w - m.r]), mid = (m.t + h - m.b) / 2;
+    const panels = [
+      { key: "surf", title: "Sea surface", top: m.t + 22, bot: mid - gap / 2 },
+      { key: "top", title: `Top ${comma(DEPTH_MAX)} m average: the heat stored`, top: mid + gap / 2 + 4, bot: h - m.b }
+    ];
+    svg.attr("aria-label", `Two line charts sharing a time axis, 1950 to 2100, warming compared with 1995–2014. Top: sea surface. Bottom: average of the top ${comma(DEPTH_MAX)} m. ` +
+      `With low emissions, after CO₂ peaks in ${peakYr} the surface stays about level while the top ${comma(DEPTH_MAX)} m keeps warming, reaching ${sign(TS.ssp126.at(-1).top, 2)} °C by 2100 (high emissions: ${sign(TS.ssp585.at(-1).top, 2)} °C).`);
+    svg.append("rect").attr("x", x(2014)).attr("y", m.t).attr("width", x(2100) - x(2014)).attr("height", h - m.b - m.t).attr("fill", "currentColor").attr("opacity", .05);
+    svg.append("text").attr("class", "muted").attr("x", x(2014) + 8).attr("y", m.t + 12).text("Projection →");
+    svg.append("g").attr("class", "axis").attr("transform", `translate(0,${h - m.b})`).call(d3.axisBottom(x).ticks(Math.max(3, Math.floor((x.range()[1] - m.l) / 90))).tickFormat(d3.format("d")));
+    svg.append("text").attr("class", "muted").attr("x", x.range()[1]).attr("y", h - 6).attr("text-anchor", "end").text("Year · warming in °C vs 1995–2014");
+    const Y = {};
+    for (const P of panels) {
+      const y = Y[P.key] = d3.scaleLinear(d3.extent(SC.flatMap(e => TS[e].map(d => d[P.key])).concat(0)), [P.bot, P.top]).nice(4);
+      svg.append("g").attr("class", "grid").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(4).tickSize(-(x.range()[1] - m.l)).tickFormat(""));
+      svg.append("g").attr("class", "axis").attr("transform", `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(4).tickFormat(d => sign(d, 1)));
+      svg.append("line").attr("x1", m.l).attr("x2", x.range()[1]).attr("y1", y(0)).attr("y2", y(0)).attr("stroke", "currentColor").attr("opacity", .45);
+      svg.append("text").attr("class", "lbl").attr("x", m.l).attr("y", P.top - 8).text(P.title);
+      const ln = d3.line().x(d => x(d.y)).y(d => y(d[P.key])).curve(d3.curveMonotoneX);
+      for (const e of SC) svg.append("path").datum(TS[e]).attr("fill", "none").style("stroke", VAR[e]).attr("stroke-width", e === "historical" ? 2 : 2.5).attr("d", ln);
+      const lo = TS.ssp126.at(-1), hi = TS.ssp585.at(-1);
+      if (F.wide) endLabels(svg, F, x, [ // on small charts they'd sit on the lines; the pair line and hover carry the values
+        { key: "ssp585", name: "High emissions", value: `${sign(hi[P.key], 2)} °C in 2100`, y: y(hi[P.key]), color: VAR.ssp585 },
+        { key: "ssp126", name: "Low emissions", value: `${sign(lo[P.key], 2)} °C in 2100`, y: y(lo[P.key]), color: VAR.ssp126 }
+      ]);
+      // the low-emissions CO₂ peak, on both panels
+      const pv = TS.ssp126.find(d => d.y === peakYr);
+      svg.append("line").attr("x1", x(peakYr)).attr("x2", x(peakYr)).attr("y1", P.top).attr("y2", P.bot).style("stroke", VAR.ssp126).attr("stroke-dasharray", "3 4").attr("opacity", .6);
+      svg.append("circle").attr("cx", x(peakYr)).attr("cy", y(pv[P.key])).attr("r", 4.5).style("fill", VAR.ssp126).attr("stroke", "#fff").attr("stroke-width", 1.5);
+    }
+    svg.append("text").attr("class", "sub halo").attr("x", x(peakYr) - 6).attr("y", panels[0].top + 12).attr("text-anchor", "end").style("fill", VAR.ssp126)
+      .text(F.wide ? `${peakYr}: low-emissions CO₂ peaks` : `CO₂ peaks ${peakYr}`);
+    // hover: one year, both panels
+    const hover = svg.append("g").style("display", "none").style("pointer-events", "none");
+    hover.append("line").attr("y1", m.t).attr("y2", h - m.b).attr("stroke", "currentColor").attr("opacity", .4);
+    svg.append("rect").attr("x", m.l).attr("y", m.t).attr("width", x.range()[1] - m.l).attr("height", h - m.t - m.b).attr("fill", "transparent")
+      .on("mousemove", ev => {
+        const yr = Math.max(1950, Math.min(2100, Math.round(x.invert(d3.pointer(ev)[0]))));
+        const rows = (yr <= 2014 ? ["historical"] : ["ssp126", "ssp585"]).map(e => [e, TS[e].find(d => d.y === yr)]);
+        hover.style("display", null).select("line").attr("x1", x(yr)).attr("x2", x(yr));
+        hover.selectAll("circle").data(panels.flatMap(P => rows.map(([e, d]) => ({ e, cy: Y[P.key](d[P.key]) })))).join("circle")
+          .attr("r", 4.5).attr("cx", x(yr)).attr("cy", d => d.cy).style("fill", d => VAR[d.e]).attr("stroke", "#fff").attr("stroke-width", 1.5);
+        showTip(ev, `<b>${yr}</b>${yr > 2014 ? " · projected" : ""}<br>` + rows.map(([e, d]) => `${NAME[e]}: surface ${sign(d.surf, 2)} °C, top ${comma(DEPTH_MAX)} m ${sign(d.top, 2)} °C`).join("<br>"));
+      }).on("mouseleave", () => { hover.style("display", "none"); hideTip(); });
+  }
+  function buildDepth() {
+    const F = frame(el, { h: 440 }), { svg, h, m } = F;
+    const x = d3.scaleLinear([Math.min(-0.2, d3.min(all, d => d.v)), d3.max(all, d => d.v)], [m.l, F.w - m.r]).nice();
+    const y = d3.scaleLinear([0, DEPTH_MAX], [m.t + 6, h - m.b]);
+    axes(F, x, y, "Warming since 1950–1979 (°C)", "Depth (m)", d => sign(d, 1), d => comma(d));
+    svg.append("line").attr("x1", x(0)).attr("x2", x(0)).attr("y1", m.t).attr("y2", h - m.b).attr("stroke", "currentColor").attr("opacity", .45);
+    svg.append("line").attr("x1", m.l).attr("x2", x.range()[1]).attr("y1", y(MARK)).attr("y2", y(MARK)).attr("stroke", "currentColor").attr("stroke-dasharray", "3 4").attr("opacity", .45);
+    svg.append("text").attr("class", "muted").attr("x", x.range()[1]).attr("y", y(MARK) - 6).attr("text-anchor", "end").text(`${comma(MARK)} m`);
+    const ln = d3.line().x(d => x(d.v)).y(d => y(d.z)).curve(d3.curveMonotoneY);
+    // where history ended, for reference once the futures split
+    const ref = svg.append("path").datum(prof("historical", 2014)).attr("fill", "none").style("stroke", VAR.historical).attr("stroke-width", 1.5).attr("stroke-dasharray", "4 3").attr("d", ln);
+    const refLbl = svg.append("text").attr("class", "sub halo").style("fill", VAR.historical).text("2014");
+    const g = svg.append("g"), lbl = svg.append("g");
+    const hover = svg.append("g").style("display", "none");
+    hover.append("line").attr("x1", m.l).attr("x2", x.range()[1]).attr("stroke", "currentColor").attr("opacity", .4);
+    svg.append("rect").attr("x", m.l).attr("y", m.t).attr("width", x.range()[1] - m.l).attr("height", h - m.t - m.b).attr("fill", "transparent")
+      .on("mousemove", ev => {
+        const d = Math.max(z[0], Math.min(DEPTH_MAX, y.invert(d3.pointer(ev)[1]))), S = series();
+        hover.style("display", null).select("line").attr("y1", y(d)).attr("y2", y(d));
+        hover.selectAll("circle").data(S).join("circle").attr("r", 4.5).attr("cx", s => x(at(s[1], d))).attr("cy", y(d)).style("fill", s => VAR[s[0]]).attr("stroke", "#fff").attr("stroke-width", 1.5);
+        showTip(ev, `<b>${comma(Math.round(d / 10) * 10)} m · ${yr}</b>${yr > 2014 ? " · projected" : ""}<br>` + S.map(s => `${NAME[s[0]]}: ${sign(at(s[1], d), 2)} °C`).join("<br>"));
+      }).on("mouseleave", () => { hover.style("display", "none"); hideTip(); });
+    draw = () => {
+      const S = series();
+      g.selectAll("path").data(S, s => s[0]).join("path").attr("fill", "none").style("stroke", s => VAR[s[0]]).attr("stroke-width", 3).attr("d", s => ln(s[1]));
+      ref.attr("opacity", yr > 2014 ? .8 : 0); refLbl.attr("opacity", yr > 2014 ? 1 : 0)
+        .attr("x", x(prof("historical", 2014)[0].v) - 8).attr("y", y(z[0]) + 12).attr("text-anchor", "end");
+      // surface values, labelled at the top of each line and nudged apart
+      const tops = S.map(s => ({ e: s[0], v: s[1][0].v, px: x(s[1][0].v) })).sort((a, b) => a.px - b.px);
+      for (let i = 1; i < tops.length; i++) if (tops[i].px - tops[i - 1].px < 110) tops[i].px = tops[i - 1].px + 110;
+      lbl.selectAll("text").data(tops, t => t.e).join("text").attr("class", "lbl halo").attr("y", m.t - 4).attr("text-anchor", "middle")
+        .attr("x", t => Math.min(x.range()[1] + (F.wide ? 60 : -30), Math.max(m.l + 90, t.px))).style("fill", t => VAR[t.e])
+        .text(t => `${t.e === "historical" ? "" : t.e === "ssp126" ? "Low " : "High "}${sign(t.v, 1)} °C`);
+      svg.attr("aria-label", `Line chart of ocean warming by depth in ${yr}, compared with 1950–1979, from the surface down to ${comma(DEPTH_MAX)} m. ` +
+        S.map(s => `${NAME[s[0]]}: ${sign(s[1][0].v, 2)} °C at the surface and ${sign(at(s[1], MARK), 2)} °C at ${comma(MARK)} m.`).join(" "));
+    };
+    draw();
+  }
+  function upd() {
+    if (view === "time") {
+      // what happens after the CO₂ peak, as 10-year averages so one warm or cool year doesn't decide it
+      const a = peakYr - 5, b = peakYr + 5, chg = key => avgOf("ssp126", key, 2091, 2100) - avgOf("ssp126", key, a, b);
+      $("#depthPair").innerHTML = `Low emissions, ${peakYr} → 2100 (10-year averages): surface <b class="lo">${sign(chg("surf"), 2)} °C</b> · top ${comma(DEPTH_MAX)} m <b class="lo">${sign(chg("top"), 2)} °C</b>`;
+      return;
+    }
+    $("#depthYear").value = yr; $("#depthYearLbl").textContent = yr;
+    $("#depthProj").hidden = yr <= 2014;
+    $("#depthYear").setAttribute("aria-valuetext", yr + (yr > 2014 ? ", projected" : ""));
+    const S = series();
+    $("#depthPair").innerHTML = yr <= 2014
+      ? pairHTML(`Warming at ${comma(MARK)} m, ${yr}`, 0, 0, " °C", sign(at(S[0][1], MARK), 2))
+      : pairHTML(`Warming at ${comma(MARK)} m, ${yr}`, sign(at(S[0][1], MARK), 2), sign(at(S[1][1], MARK), 2), " °C");
+    draw && draw();
+  }
+  const btn = $("#depthPlay");
+  const stop = () => { timer?.stop(); timer = null; btn.textContent = "Play"; btn.setAttribute("aria-pressed", "false"); };
+  d3.select("#depthYear").on("input", function () { stop(); yr = +this.value; upd(); });
+  // Play and the year slider only drive the depth view
+  seg("#depthView", "v", v => {
+    view = v; stop();
+    btn.style.display = $("#depthYearCtl").style.display = v === "time" ? "none" : "";
+    build(); upd();
+  });
+  btn.addEventListener("click", () => {
+    if (timer) return stop();
+    if (yr >= 2100) yr = 1950;
+    const start = yr;
+    btn.textContent = "Pause"; btn.setAttribute("aria-pressed", "true");
+    timer = d3.timer(t => {
+      const next = Math.min(2100, start + Math.floor(t / 110));
+      if (next === yr) return;
+      yr = next; upd();
+      if (yr >= 2100) stop();
+    });
+  });
+  build(); upd(); renderers.push(() => { build(); upd(); });
+}
+
 /* ================= DEEP: sea level ================= */
 function seaLevelChart(G) {
   const el = $("#slChart");
@@ -739,6 +906,8 @@ function seaLevelChart(G) {
       { key: "ssp126", name: "Low emissions", value: `${sign(lo.v)} cm by 2100`, y: y(lo.v), color: VAR.ssp126 }
     ]);
     gapBracket(labels, F, x, y(hi.v) + 26, y(lo.v) - 8, `${(hi.v - lo.v).toFixed(1)} cm apart`);
+    const pk = co2PeakYear(G), pkV = S.ssp126.find(d => d.y === pk).v;
+    yearMarker(labels, F, x, y, pk, pkV, F.wide ? `${pk}: CO₂ peaks, but the water keeps rising` : `Still rising after ${pk}`, { color: VAR.ssp126, dx: 12, dy: 40, anchor: "start" });
     svg.append("text").attr("class", "muted").attr("x", x(2014) + 8).attr("y", m.t + 16).text("Projection →");
     svg.append("text").attr("class", "muted").attr("x", m.l).attr("y", h - 6).text(F.wide ? "Models: " + models.join(", ") : models.length + " models");
     xh = crosshair(svg, F, x, y, yr => SC.map(e => { const r = S[e].find(d => d.y === yr); return r ? [e, r.v] : null; }).filter(Boolean), v => sign(v) + " cm (model average)");
