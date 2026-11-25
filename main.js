@@ -498,6 +498,7 @@ function rainSection(land, R) {
   const period = () => `${R.bins[bin]}–${R.bins[bin] + 4}`;
   const valid = (sc, c) => { const ts = R[sc].ts[c]; return ts && ts[bin] != null && R.base[c] >= 0.25 ? ts[bin] : NaN; };
   const meanOf = sc => { let a = 0, w = 0; for (let c = 0; c < N; c++) { const v = valid(sc, c); if (v === v) { a += v * wt[c]; w += wt[c]; } } return a / w; };
+  const shareOf = sc => { let a = 0, w = 0; for (let c = 0; c < N; c++) { const v = valid(sc, c); if (v === v) { if (Math.abs(v) > 10) a += wt[c]; w += wt[c]; } } return 100 * a / w; };
   function build() {
     map = SmoothMap(el, {
       grid: { nlat: ny, nlon: nx, lat0: -90 + R.step / 2, lon0: -180 + R.step / 2, step: R.step }, land, color, theme: "light", maxH: mapMaxH(30),
@@ -513,11 +514,12 @@ function rainSection(land, R) {
     const proj = R.bins[bin] >= 2015;
     $("#rainYearLbl").textContent = period();
     $("#rainProj").hidden = !proj;
-    $("#rainYear").setAttribute("aria-valuetext", period() + (proj ? ", projected" : ""));
+    $("#rainYear").setAttribute("aria-valuetext", period() + (proj ? ", projected" : "") + (bin === 22 ? ", low-emissions CO₂ peaks" : ""));
     scenarioLock("#rainScen", !proj);
-    $("#rainPair").innerHTML = proj
-      ? pairHTML(`Average change across mapped areas, ${period()}`, sign(meanOf("s126")), sign(meanOf("s585")), "%")
-      : pairHTML(`Average change across mapped areas, ${period()}`, 0, 0, "%", sign(meanOf(s)));
+    // only the picked scenario; before 2015 both share one history
+    const open = proj ? `<b class="${s === "s126" ? "lo" : "hi"}">` : "<b>";
+    const line = (what, v) => `${what}, ${period()}: ${open}${v}%</b>${proj ? "" : " <span>(one history before 2015)</span>"}`;
+    $("#rainPair").innerHTML = line("Average change across mapped areas", sign(meanOf(s))) + "<br>" + line("Area changed by more than 10%", Math.round(shareOf(s)));
     map.label(`Map of rainfall change for ${period()}${proj ? ", " + (s === "s126" ? "low" : "high") + " emissions" : ""}, compared with 1995–2014. Brown areas get drier, green areas get wetter, grey areas are deserts.`);
   }
   d3.select("#rainYear").on("input", function () { bin = +this.value; upd(); });

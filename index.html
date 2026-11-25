@@ -31,7 +31,7 @@
   <div class="clouds" aria-hidden="true"><span></span><span></span><span></span></div>
   <div class="hero-in">
     <h1>Human Consequence</h1>
-    <p class="lede">The emissions we choose now decide how far the climate shifts, from the clouds down to the deep ocean. Scroll down to follow two futures: one with low emissions and one with high emissions.</p>
+    <p class="lede">The first thing people notice is the rain shifting. The emissions we choose now decide how far it shifts, and shape the whole climate, from the clouds to the deep ocean. Scroll down to trace it to its cause and to what keeps going long after CO₂ stops rising, following two futures: one with low emissions and one with high emissions.</p>
     <p class="byline">Amy Trinh, Minh Pham, Aryan Agarwal · DSC 106 Final Project</p>
   </div>
 </header>
@@ -43,7 +43,7 @@
       <article class="step" data-panel="rain" data-alt="2000" style="--o:1">
         <div class="card">
           <h2>Where the rain is heading</h2>
-          <p>Climate models agree that rain is shifting. Some regions get wetter and others get drier, and the shift is far stronger with high emissions. The rain doesn't cause the changes further down. It's a symptom of the same warming, and the rest of the page traces where that warming comes from.</p>
+          <p>Rain is the change people notice first. Some regions get wetter and others get drier. With low emissions it barely changes after about 2060: the average shift goes from +3.4% to +3.8% between 2060–2064 and 2095–2099. With high emissions it keeps growing. "Area changed by more than 10%" goes from 35% to 59% over the same periods. What drives it starts on land.</p>
           <p>The map shows the change in rainfall compared to 1995-2014, averaged over 8 models. Move the slider through time and switch between low and high emissions. Click the map, then scroll to zoom.</p>
           <p class="src">Data: CMIP6 precipitation, 8 models, 5-year averages, 4° grid. Grey areas are deserts (under 0.25 mm of rain a day), where a % change isn't meaningful.</p>
         </div>
@@ -55,7 +55,7 @@
           <div class="controls">
             <span class="scen"><span class="seg" id="rainScen" role="group" aria-label="Emissions scenario"><button type="button" data-s="s126">Low emissions</button><button type="button" data-s="s585" class="on">High emissions</button></span>
             <span class="note" id="rainScenNote" hidden>Scenarios split after 2014</span></span>
-            <label class="slider">Years <input type="range" id="rainYear" min="0" max="29" value="29"> <b id="rainYearLbl">2095–2099</b> <span class="proj" id="rainProj">projected</span></label>
+            <label class="slider" id="rainYearCtl">Years <span class="track"><input type="range" id="rainYear" min="0" max="29" value="29"><span class="mark" style="--at:.7586" aria-hidden="true">CO₂ peak (low)</span></span> <b id="rainYearLbl">2095–2099</b> <span class="proj" id="rainProj">projected</span></label>
           </div>
           <p class="pair" id="rainPair" aria-live="polite"></p>
           <div id="rainMap" class="map"><p class="status">Loading rainfall data…</p></div>
@@ -72,7 +72,7 @@
       <article class="step" data-panel="co2" data-alt="400" style="--o:1">
         <div class="card">
           <h2>What we put into the air</h2>
-          <p>It starts here. Human emissions pushed CO₂ in the air from 313 ppm in 1950 to 391 ppm in 2014. After 2014 the path depends on what we choose. With low emissions, CO₂ peaks around 2061 and then starts to fall. With high emissions, it reaches 1,102 ppm by 2100.</p>
+          <p>The rain shift starts here, with what we put into the air. Human emissions pushed CO₂ in the air from 313 ppm in 1950 to 391 ppm in 2014. After 2014 the path depends on what we choose. With low emissions, CO₂ peaks around 2061 and then starts to fall. With high emissions, it reaches 1,102 ppm by 2100.</p>
           <p class="src">Data: GFDL-ESM4 co2mass, converted to ppm. Scenarios: SSP1-2.6 (low), SSP5-8.5 (high).</p>
         </div>
       </article>
@@ -106,7 +106,7 @@
       <article class="step" data-panel="sst" data-alt="0" style="--o:1">
         <div class="card">
           <h2>Sea surface temperature, 1950-2100</h2>
-          <p>The warming isn't spread evenly, and almost no part of the ocean escapes it. Press play to watch it spread. Switch to "Change" to see how much each area has warmed since 1950-1979.</p>
+          <p>The warming isn't spread evenly, and almost no part of the ocean escapes it. With low emissions the surface levels off after the 2061 CO₂ peak, as rain does (10-year averages: 18.8 °C around 2061, 18.7 °C in 2091–2100). With high emissions it keeps climbing, to 20.7 °C in 2100. Press play to watch it spread. Switch to "Change" to see how much each area has warmed since 1950-1979.</p>
           <p class="src">Data: GFDL-ESM4 tos (sea surface temperature), yearly mean, 2° grid. Years after 2014 are projections.</p>
         </div>
       </article>
@@ -146,7 +146,7 @@
       <article class="step" data-panel="depth" data-alt="-800" style="--o:1">
         <div class="card">
           <h2>Where the heat goes</h2>
-          <p id="depthCopy">The surface is only the start. The ocean keeps soaking up heat and carrying it down. With low emissions, the surface stops warming after CO₂ peaks around 2061. Yet the water at 1,000 m keeps warming: from +0.2 °C in 2061 to +0.45 °C in 2100. That sinking heat is what keeps sea level rising.</p>
+          <p id="depthCopy">The surface is only the start. The ocean keeps soaking up heat and carrying it down. With low emissions, the surface stops warming after CO₂ peaks around 2061. Yet the water at 1,000 m keeps warming: from +0.2 °C in 2061 to +0.45 °C in 2100. Rain and the surface settled after 2061, but the water at depth didn't. That sinking heat is what keeps sea level rising.</p>
           <p>Each line shows how much the ocean has warmed at each depth since 1950-1979. Press play or drag the slider to watch the heat sink.</p>
           <p>Switch to "Over time" to line this up with the other charts. After 2061 the surface line goes flat, but the heat stored in the top 2,000 m keeps climbing, the same shape as sea level in the next chart.</p>
           <p class="src">Data: GFDL-ESM4 thetao (sea water potential temperature, the same model as the sea surface map), global area-weighted mean at each depth, yearly mean.</p>
@@ -155,8 +155,8 @@
       <article class="step" data-panel="sl" data-alt="-1500" style="--o:3">
         <div class="card">
           <h2>Sea level rise from warming water</h2>
-          <p>Water expands as it warms, so sea level rises even without any melting ice. But the ocean is slow. With low emissions, CO₂ peaks around 2061 and the sea surface stops warming, yet sea level keeps climbing. It goes from +10.6 cm in 2061 to +16.4 cm in 2100. Heat that's already in the ocean keeps sinking deeper and expanding the water.</p>
-          <p>Sea level follows the heat stored in the top 2,000 m from the previous chart almost exactly (correlation 0.999, every year, both futures). It doesn't follow CO₂ or the surface: after 2061 with low emissions, CO₂ falls and the surface levels off, while stored heat and sea level keep rising together.</p>
+          <p>Water expands as it warms, so sea level rises even without any melting ice. But the ocean is slow. With low emissions, CO₂ peaks around 2061 and rain and the sea surface level off, yet sea level keeps climbing. It goes from +10.6 cm in 2061 to +16.4 cm in 2100. Heat that's already in the ocean keeps sinking deeper and expanding the water.</p>
+          <p>Sea level follows the heat stored in the top 2,000 m from the previous chart almost exactly (correlation 0.999, every year, both futures). It doesn't follow CO₂ or the surface: after 2061 with low emissions, CO₂ falls and the surface stays flat, while stored heat and sea level keep rising together.</p>
           <p>The shaded band is the range across models.</p>
           <p class="src">Data: CMIP6 zostoga (global thermosteric sea level: expansion from heat only, not added water from rain or ice), averaged over 4 models (ACCESS-CM2, IPSL-CM6A-LR, MIROC6, MPI-ESM1-2-LR), relative to 1995-2014. These are different models from the GFDL-ESM4 run used for CO₂ and temperature.</p>
         </div>
@@ -164,7 +164,7 @@
       <article class="step" data-panel="sl" data-alt="-2500" style="--o:5">
         <div class="card">
           <h2>So the timing matters</h2>
-          <p>Every chart on this page splits at the same point. By 2100 the two futures are 655 ppm of CO₂, 1.9 °C of sea surface temperature and 16.3 cm of sea level apart. And because the ocean keeps rising after emissions fall, every decade we wait adds sea level rise we can't take back. Cutting emissions sooner gives the smaller number. Waiting gives the bigger one.</p>
+          <p>Every chart on this page splits at the same point. Some effects settle soon after CO₂ stops rising: rain and the sea surface. Others keep going: deep heat and sea level. By 2100 the two futures are 655 ppm of CO₂, 1.9 °C of sea surface temperature and 16.3 cm of sea level apart. By 2095–2099, 59% of the map's area has a rain change over 10% with high emissions, against 18% with low. And because the deep ocean keeps heating after emissions fall, every decade we wait adds sea level rise we can't take back. Cutting emissions sooner gives the smaller number. Waiting gives the bigger one.</p>
         </div>
       </article>
     </div>

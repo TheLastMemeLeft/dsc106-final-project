@@ -136,6 +136,11 @@ main { display: block; }
 .slider { display: inline-flex; align-items: center; gap: 10px; font-weight: 500; }
 .slider input { accent-color: var(--act); width: 180px; }
 .slider.wide input { width: 240px; }
+.track { position: relative; display: inline-flex; width: 180px; }
+#rainYearCtl { padding-bottom: 16px; } /* room for the .mark label; padding keeps the row's centring intact */
+.track input { width: 100%; }
+.mark { position: absolute; left: calc(var(--at) * (100% - 16px) + 8px); top: 100%; transform: translateX(-50%); padding-top: 5px; font: 500 12px var(--sans); color: var(--ink-2); white-space: nowrap; pointer-events: none; }
+.mark::before { content: ""; position: absolute; left: 50%; top: 0; width: 1px; height: 5px; background: currentColor; }
 .slider b { font-variant-numeric: tabular-nums; min-width: 4.6em; font-weight: 700; white-space: nowrap; }
 #rainYearLbl { flex: none; width: 6.2em; } /* fixed, so the track length never changes while dragging */
 .note { font-size: 13px; color: var(--ink-2); }
@@ -233,6 +238,7 @@ main { display: block; }
   .seg button, .playbtn { min-height: 44px; }
   .slider { flex-wrap: wrap; width: 100%; }
   .slider input, .slider.wide input { width: 100%; flex: 1 1 160px; }
+  .track { flex: 1 1 160px; width: auto; }
   .writeup { padding: 96px 16px 160px; }
   .writeup-in { font-size: 19px; }
   .stub { font-size: 19px; }
