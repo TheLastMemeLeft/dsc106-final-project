@@ -38,6 +38,24 @@ function seg(sel, attr, fn, multi = false) {
   });
   sync();
 }
+// Play/Pause for a 1950–2100 year slider; advances by elapsed time, so playback keeps pace even when a frame is slow to draw
+function player(btn, getYr, setYr) {
+  let timer = null;
+  const stop = () => { timer?.stop(); timer = null; btn.textContent = "Play"; btn.setAttribute("aria-pressed", "false"); };
+  btn.addEventListener("click", () => {
+    if (timer) return stop();
+    let shown = getYr();
+    const start = shown >= 2100 ? 1950 : shown;
+    btn.textContent = "Pause"; btn.setAttribute("aria-pressed", "true");
+    timer = d3.timer(ms => {
+      const next = Math.min(2100, start + Math.floor(ms / 110));
+      if (next === shown) return;
+      setYr(shown = next);
+      if (next >= 2100) stop();
+    });
+  });
+  return stop;
+}
 function scenarioLock(sel, locked) {
   d3.selectAll(`${sel} button`).attr("aria-disabled", locked ? "true" : null);
   $(sel + "Note").hidden = !locked;
@@ -45,10 +63,13 @@ function scenarioLock(sel, locked) {
 
 /* ---------- re-render on width change ---------- */
 const renderers = [];
-let lastW = innerWidth, rT;
+// desktop chart heights follow the window height; on touch screens only width counts, so the address bar showing/hiding doesn't redraw
+const fine = matchMedia("(pointer: fine)");
+const sizeKey = () => fine.matches ? innerWidth + "x" + innerHeight : String(innerWidth);
+let lastSize = sizeKey(), rT;
 addEventListener("resize", () => {
   clearTimeout(rT);
-  rT = setTimeout(() => { if (innerWidth === lastW) return; lastW = innerWidth; renderers.forEach(f => f()); layout(); }, 180);
+  rT = setTimeout(() => { if (sizeKey() === lastSize) return; lastSize = sizeKey(); renderers.forEach(f => f()); layout(); }, 180);
 });
 
 /* ---------- easing: the page's --ease-out token, solved exactly for d3 transitions ---------- */
@@ -325,7 +346,7 @@ function SmoothMap(el, { grid, land, color, theme, onHover, maxH }) {
       ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, width * dpr, height * dpr);
       ctx.setTransform(k, 0, 0, k, x * dpr, y * dpr); ctx.drawImage(snap, 0, 0);
     })
-    .on("end", () => { buildLut(); render(); });
+    .on("end", () => { if (t !== lastT) { buildLut(); render(); } }); // a plain click also sends start/end; nothing moved
   let zoomArmed = false; // the wheel zooms only after a click on the map, so page scrolling is never trapped
   canvas.on("click.arm", () => { zoomArmed = true; }).on("mouseleave.arm", () => { zoomArmed = false; });
   canvas.call(zoom).on("dblclick.zoom", null).on("dblclick", () => canvas.transition().duration(reduced.matches ? 0 : 500).call(zoom.transform, d3.zoomIdentity));
@@ -509,10 +530,11 @@ function rainSection(land, R) {
 function co2Chart(G) {
   const el = $("#co2Chart"), lines = {};
   let on = new Set(SC), cur = null;
-  const vis = () => {
-    const t = d3.transition().duration(reduced.matches ? 0 : UI_MS).ease(EASE_OUT), sel = d3.select(el);
-    SC.forEach(e => { sel.selectAll(".l-" + e + ", .end-" + e).transition(t).attr("opacity", on.has(e) ? 1 : 0); });
-    sel.selectAll(".gap").transition(t).attr("opacity", on.has("ssp126") && on.has("ssp585") ? 1 : 0);
+  const vis = animate => {
+    const t = d3.transition().duration(reduced.matches ? 0 : UI_MS).ease(EASE_OUT);
+    const fade = (q, show) => { const s = d3.select(el).selectAll(q); (animate ? s.transition(t) : s).attr("opacity", show ? 1 : 0); };
+    SC.forEach(e => fade(".l-" + e + ", .end-" + e, on.has(e)));
+    fade(".gap", on.has("ssp126") && on.has("ssp585"));
   };
   function build() {
     cur?.stop();
@@ -538,11 +560,10 @@ function co2Chart(G) {
     const pk = co2PeakYear(G), pkV = G.co2.ssp126[G.years.ssp126.indexOf(pk)];
     yearMarker(labels, F, x, y, pk, pkV, F.wide ? `Low emissions: CO₂ peaks in ${pk}, then falls` : `Low peaks in ${pk}`, { color: VAR.ssp126, cls: "end-ssp126" });
     crosshair(svg, F, x, y, yr => SC.filter(e => on.has(e)).map(e => { const i = G.years[e].indexOf(yr); return i < 0 ? null : [e, G.co2[e][i]]; }).filter(Boolean), v => Math.round(v) + " ppm");
-    SC.forEach(e => d3.select(el).selectAll(".l-" + e + ", .end-" + e).attr("opacity", on.has(e) ? 1 : 0));
-    d3.select(el).selectAll(".gap").attr("opacity", on.has("ssp126") && on.has("ssp585") ? 1 : 0);
+    vis(false);
     cur = revealer(svg, F, x, y, plot, labels, SC.map(e => ({ e, d: lines[e] })), () => on, SPLIT_PACE);
   }
-  seg("#co2Scen", "s", list => { on = new Set(list); vis(); }, true);
+  seg("#co2Scen", "s", list => { on = new Set(list); vis(true); }, true);
   $("#co2Replay").addEventListener("click", () => cur.reveal());
   build(); renderers.push(build);
   armReveal("co2", () => cur);
@@ -551,8 +572,12 @@ function co2Chart(G) {
 /* ================= LAND: CO2 vs SST (connected scatter) ================= */
 function scatterChart(G) {
   const el = $("#scatChart");
-  let on = new Set(SC);
+  let on = new Set(SC), reindex = () => {};
   const order = ["historical", "ssp585", "ssp126"]; // low drawn last so it isn't buried under high
+  const vis = animate => {
+    const t = d3.transition().duration(reduced.matches ? 0 : UI_MS).ease(EASE_OUT);
+    for (const e of SC) { const s = d3.select(el).selectAll(`.s-${e}, .ann-${e}`); (animate ? s.transition(t) : s).attr("opacity", on.has(e) ? 1 : 0); }
+  };
   function build() {
     const F = frame(el, { h: 420, ml: 52 }), { svg, h, m } = F;
     const pts = order.flatMap(e => G.years[e].map((yr, i) => ({ e, yr, x: G.co2[e][i], y: G.sst[e][i] })));
@@ -561,7 +586,7 @@ function scatterChart(G) {
     axes(F, x, y, "CO₂ in the air (ppm, log scale)", "Global sea surface temperature (°C)", d3.format(","), d => d.toFixed(1));
     svg.select(".axis").selectAll(".tick").filter(d => ![300, 400, 500, 600, 800, 1000].includes(d)).select("text").remove();
     const line = d3.line().x(d => x(d.x)).y(d => y(d.y));
-    const groups = svg.append("g").selectAll("g").data(order).join("g").attr("class", d => "s-" + d).attr("opacity", d => on.has(d) ? 1 : 0);
+    const groups = svg.append("g").selectAll("g").data(order).join("g").attr("class", d => "s-" + d);
     groups.append("path").attr("fill", "none").style("stroke", d => VAR[d]).attr("stroke-width", 1.4).attr("opacity", .55).attr("d", d => line(pts.filter(p => p.e === d)));
     groups.selectAll("circle").data(d => pts.filter(p => p.e === d)).join("circle").attr("cx", d => x(d.x)).attr("cy", d => y(d.y)).attr("r", 3.2).style("fill", d => VAR[d.e]).attr("opacity", .85);
     const ann = svg.append("g");
@@ -577,22 +602,21 @@ function scatterChart(G) {
       annotate(ann, x(pLo.x), y(pLo.y), -50, -72, `Low, 2100 · ${pLo.y.toFixed(1)} °C`, { anchor: "start", color: VAR.ssp126, cls: "ann-ssp126" });
       annotate(ann, x(pHi.x), y(pHi.y), -44, 6, `High, 2100 · ${pHi.y.toFixed(1)} °C`, { anchor: "end", color: VAR.ssp585, cls: "ann-ssp585" });
     }
-    SC.forEach(e => ann.selectAll(".ann-" + e).attr("opacity", on.has(e) ? 1 : 0));
-    const del = d3.Delaunay.from(pts, d => x(d.x), d => y(d.y));
+    vis(false);
+    // hover finds the nearest visible dot, so a hidden series never steals it
+    let shown, del;
+    reindex = () => { shown = pts.filter(p => on.has(p.e)); del = d3.Delaunay.from(shown, d => x(d.x), d => y(d.y)); };
+    reindex();
     const ring = svg.append("circle").attr("r", 7).attr("fill", "none").attr("stroke", "currentColor").attr("stroke-width", 1.5).style("display", "none");
     svg.append("rect").attr("x", m.l).attr("y", m.t).attr("width", x.range()[1] - m.l).attr("height", h - m.t - m.b).attr("fill", "transparent")
       .on("mousemove", e => {
-        const [mx, my] = d3.pointer(e), d = pts[del.find(mx, my)];
-        if (!d || !on.has(d.e)) { ring.style("display", "none"); return hideTip(); }
+        const [mx, my] = d3.pointer(e), d = shown[del.find(mx, my)];
+        if (!d) { ring.style("display", "none"); return hideTip(); }
         ring.style("display", null).attr("cx", x(d.x)).attr("cy", y(d.y));
         showTip(e, `<b>${d.yr}</b> · ${NAME[d.e]}<br>CO₂ ${comma(Math.round(d.x))} ppm<br>Sea surface ${d.y.toFixed(2)} °C`);
       }).on("mouseleave", () => { ring.style("display", "none"); hideTip(); });
   }
-  seg("#scatScen", "s", list => {
-    on = new Set(list);
-    const t = d3.transition().duration(reduced.matches ? 0 : UI_MS).ease(EASE_OUT);
-    for (const e of SC) { d3.select(el).selectAll(".s-" + e).transition(t).attr("opacity", on.has(e) ? 1 : 0); d3.select(el).selectAll(".ann-" + e).transition(t).attr("opacity", on.has(e) ? 1 : 0); }
-  }, true);
+  seg("#scatScen", "s", list => { on = new Set(list); vis(true); reindex(); }, true);
   build(); renderers.push(build);
 }
 
@@ -690,6 +714,7 @@ function sstSection(land, meta, Q) {
     }
   }
   function build() { buildMap(); buildHist(); upd(); }
+  const stop = player($("#play"), () => yr, v => { yr = v; $("#sstYear").value = yr; upd(); });
   d3.select("#sstYear").on("input", function () { stop(); yr = +this.value; upd(); });
   seg("#sstScen", "s", v => { s = v; upd(true); });
   seg("#sstMode", "m", v => { mode = v; map.setColor(v === "abs" ? ABS : ANOM); drawLegend(); upd(); });
@@ -697,23 +722,6 @@ function sstSection(land, meta, Q) {
   // Temperature/Change only applies to the map, so it steps aside while the histogram is up
   document.querySelector('.panel[data-panel="sst"]').addEventListener("shown", () => { modeSeg.hidden = false; });
   document.querySelector('.panel[data-panel="hist"]').addEventListener("shown", () => { if (!narrow.matches) modeSeg.hidden = true; });
-  // play: advances by elapsed time, so playback keeps pace even when a frame is slow to draw
-  let timer = null;
-  const btn = $("#play");
-  function stop() { if (timer) { timer.stop(); timer = null; } btn.textContent = "Play"; btn.setAttribute("aria-pressed", "false"); }
-  btn.addEventListener("click", () => {
-    if (timer) return stop();
-    if (yr >= 2100) yr = 1950;
-    const start = yr;
-    btn.textContent = "Pause"; btn.setAttribute("aria-pressed", "true");
-    let shown = yr;
-    timer = d3.timer(el => {
-      const next = Math.min(2100, start + Math.floor(el / 110));
-      if (next === shown) return;
-      shown = yr = next; $("#sstYear").value = yr; upd();
-      if (yr >= 2100) stop();
-    });
-  });
   build(); renderers.push(build);
 }
 
@@ -737,7 +745,7 @@ function depthChart(D, peakYr) {
   const at = (p, depth) => { const j = d3.bisector(d => d.z).left(p, depth); const a = p[Math.max(0, j - 1)], b = p[Math.min(p.length - 1, j)]; return a.z === b.z ? a.v : a.v + (b.v - a.v) * (depth - a.z) / (b.z - a.z); };
   const MARK = 1000;
   const all = ["ssp126", "ssp585"].flatMap(e => D.years[e].flatMap(y => prof(e, y))).concat(hy.flatMap(y => prof("historical", y)));
-  let yr = 2100, timer = null, draw = null;
+  let yr = 2100, draw = null;
   const series = () => yr <= 2014 ? [["historical", prof("historical", yr)]] : [["ssp126", prof("ssp126", yr)], ["ssp585", prof("ssp585", yr)]];
   const build = () => view === "time" ? buildTime() : buildDepth();
   function buildTime() {
@@ -843,25 +851,13 @@ function depthChart(D, peakYr) {
     draw && draw();
   }
   const btn = $("#depthPlay");
-  const stop = () => { timer?.stop(); timer = null; btn.textContent = "Play"; btn.setAttribute("aria-pressed", "false"); };
+  const stop = player(btn, () => yr, v => { yr = v; upd(); });
   d3.select("#depthYear").on("input", function () { stop(); yr = +this.value; upd(); });
   // Play and the year slider only drive the depth view
   seg("#depthView", "v", v => {
     view = v; stop();
     btn.style.display = $("#depthYearCtl").style.display = v === "time" ? "none" : "";
     build(); upd();
-  });
-  btn.addEventListener("click", () => {
-    if (timer) return stop();
-    if (yr >= 2100) yr = 1950;
-    const start = yr;
-    btn.textContent = "Pause"; btn.setAttribute("aria-pressed", "true");
-    timer = d3.timer(t => {
-      const next = Math.min(2100, start + Math.floor(t / 110));
-      if (next === yr) return;
-      yr = next; upd();
-      if (yr >= 2100) stop();
-    });
   });
   build(); upd(); renderers.push(() => { build(); upd(); });
 }
